@@ -8,43 +8,56 @@ Tools for designing LPA experiments.
 # https://packaging.python.org/en/latest/single_source_version.html
 __version__ = '0.1.0'
 
-import numpy
 import os
-import pandas
-import struct
 import random
+import struct
+
+import numpy
+import pandas
 
 LED_DATA_PATH = ""
 
-class LPFFile():
+class LPF(object):
     """
-    Class that represents an lpf file.
+    Class that represents a light program file (.lpf).
 
-    Properties:
-    - file_version      -- The lpf file version
-    - total_nchannels   -- The total number of channels (i.e. LEDs) in the
-                            device.
-    - step_size         -- The size of the time step, in milliseconds.
-    - nsteps            -- The number of time steps in the lpf file.
-    - well_nchannels    -- The number of channels (LEDs) in each well.
-    - grayscale         -- A numpy array, with dimensions (nsteps,
-                            total_nchannels/well_nchannels, well_nchannels)
-                            with the grayscale intensities of the LPF
+    Parameters
+    ----------
+    file_name : str, optional
+        If present, the object will be initialized with data from an .lpf
+        file specified by this argument.
+
+    Attributes
+    ----------
+    file_version : int
+        lpf file version.
+    n_channels : int
+        Total number of channels (i.e. LEDs) in the device.
+    step_size : int
+        Size of the time step, in milliseconds.
+    n_steps : int
+        Number of time steps.
+    grayscale : array
+        Grayscale LED intensities. Its dimensions are ``(n_steps,
+        n_channels)``.
+
+    Methods
+    -------
+    load
+        Load data from an lpf file.
+    save
+        Save data into an lpf file.
 
     """
 
     def __init__(self,
-                 file_name=None,
-                 well_nchannels=2):
-
-        # Save channels per well
-        self.well_nchannels = well_nchannels
+                 file_name=None):
 
         # Initialize properties
         self.file_version = 1
-        self.total_nchannels = None
+        self.n_channels = None
         self.step_size = None
-        self.nsteps = None
+        self.n_steps = None
         self.grayscale = None
 
         # Open file name
@@ -52,6 +65,15 @@ class LPFFile():
             self.load(file_name)
 
     def load(self, file_name):
+        """
+        Load data from an lpf file.
+
+        Parameters
+        ----------
+        file_name : str
+            Name of the file to load.
+
+        """
         # Open file
         f = open(file_name, 'rb')
 
@@ -65,15 +87,15 @@ class LPFFile():
             # What to do if file version is 1.0
             if self.file_version == 1:
                 # Next 4 bytes are the total number of channels
-                self.total_nchannels = struct.unpack('<I', f.read(4))[0]
+                self.n_channels = struct.unpack('<I', f.read(4))[0]
                 # Next 4 bytes are the step size in ms
                 self.step_size = struct.unpack('<I', f.read(4))[0]
                 # Next 4 bytes are the number of steps
-                self.nsteps = struct.unpack('<I', f.read(4))[0]
+                self.n_steps = struct.unpack('<I', f.read(4))[0]
 
                 # Read grayscale
                 # Calculate size of intensity block
-                number_words_data = self.total_nchannels*self.nsteps
+                number_words_data = self.n_channels*self.n_steps
                 # Read data block
                 data = numpy.memmap(
                     f,
@@ -85,9 +107,8 @@ class LPFFile():
                 data = numpy.array(data)
                 # Resize to get grayscale values
                 self.grayscale = data.reshape((
-                    self.nsteps,
-                    self.total_nchannels/self.well_nchannels,
-                    self.well_nchannels))
+                    self.n_steps,
+                    self.n_channels))
 
             else:
                 raise NotImplementedError("LPF file version {} not recognized"
@@ -97,6 +118,15 @@ class LPFFile():
             f.close()
 
     def save(self, file_name):
+        """
+        Save data into an lpf file.
+
+        Parameters
+        ----------
+        file_name : str
+            Name of the file to save.
+
+        """
         # Open file for writing
         f = open(file_name, 'wb')
 
@@ -109,11 +139,11 @@ class LPFFile():
             # What to do if file version is 1.0
             if self.file_version == 1:
                 # Next 4 bytes are the total number of channels
-                f.write(struct.pack('<I', self.total_nchannels))
+                f.write(struct.pack('<I', self.n_channels))
                 # Next 4 bytes are the step size in ms
                 f.write(struct.pack('<I', self.step_size))
                 # Next 4 bytes are the number of steps
-                f.write(struct.pack('<I', self.nsteps))
+                f.write(struct.pack('<I', self.n_steps))
                 # Write 16 more empty bytes
                 f.write(struct.pack('<IIII', 0, 0, 0, 0))
                 # Saturate grayscale at 4095 and save
@@ -129,80 +159,182 @@ class LPFFile():
             f.close()
 
 class LEDSet(object):
-    def __init__(self, name, lpa_name, channel, nrows=4, ncols=6):
-        # Store plate dimensions
-        self.nrows = nrows
-        self.ncols = ncols
-        # Transform channel to numerical value
-        if channel in [0, 'c1', 'Top']:
-            channel = 0
-        elif channel in [1, 'c2', 'Bot', 'Bottom']:
-            channel = 1
-        else:
-            raise ValueError('channel not valid')
-        # Store arguments
+    """
+    Object that represents an LED set.
+
+    Spectral measurements of this LED set in a specific LPA have been
+    conducted with specific values of dot correction (dc) and grayscale
+    calibration (gcal). These measurements should be saved into an Excel
+    table that is loaded during the object's creation. These measurements
+    are used to convert from light intensity values in umol/m^2/s into
+    grayscale values at the specified dc and gcal values, and viceversa.
+
+    Parameters
+    ----------
+    name : str
+        Name of LED set.
+    file_name : str
+        Name of the Excel file in which spectral measurements are stored.
+
+    Attributes
+    ----------
+    name : str
+        Name of LED set.
+    lpa_name : str
+        Name of the LPA in which spectral measurements were conducted.
+    n_rows : int
+        Number of rows in the LPA.
+    n_cols : int
+        Number of cols in the LPA.
+    channel : int
+        Channel of the LPA in which the LED set is located.
+    spectral_data : DataFrame
+        A table with the LED set spectral data.
+
+    Methods
+    -------
+    get_intensity
+        Calculate intensity in umol/m^2/s from grayscale values.
+    get_grayscale
+        Calculate grayscale values from intensity values in umol/m^2/s.
+
+    """
+    def __init__(self, name, file_name):
+        # Store name
         self.name = name
-        self.lpa_name = lpa_name
-        self.channel = channel
-        # Construct name of file with led set data
-        file_name = os.path.join(
-            LED_DATA_PATH,
-            name,
-            "{}_c{}".format(lpa_name, channel + 1),
-            "{}_{}_c{}.xlsx".format(name, lpa_name, channel + 1))
-        # Open calibration data
-        self.calibration_data = pandas.read_excel(file_name, 'Sheet1')
-        # Check dimensions
-        if len(self.calibration_data) != (self.nrows*self.ncols):
-            raise ValueError("calibration data does not have the expected " + \
+        # Load spectral data
+        self.spectral_data = pandas.read_excel(file_name,
+                                               'Sheet1',
+                                               index_col='Well')
+        # Extract LPA information
+        self.lpa_name = self.spectral_data['LPA'].iloc[0]
+        self.n_rows = self.spectral_data['Row'].max()
+        self.n_cols = self.spectral_data['Col'].max()
+        channel = self.spectral_data['Channel'].iloc[0]
+        if channel in [1, 'c1', 'Top']:
+            self.channel = 0
+        elif channel in [2, 'c2', 'Bot', 'Bottom']:
+            self.channel = 1
+        else:
+            raise ValueError("channel not recognized")
+        # Sanity checks
+        if not (self.spectral_data['LPA']==self.lpa_name).all():
+            raise ValueError("LPA name is not consistent in spectral data")
+        if not (self.spectral_data['Channel']==channel).all():
+            raise ValueError("channel is not consistent in spectral data")
+        if len(self.spectral_data) != (self.n_rows*self.n_cols):
+            raise ValueError("spectral data does not have the expected " + \
                 "dimensions")
 
-    def get_intensity(self, row, col, gs, dc, gcal=255):
+    def get_intensity(self, gs, dc, gcal=255, row=None, col=None):
+        """
+        Calculate intensity in umol/m^2/s from grayscale values.
+
+        Parameters can be arrays or single numbers, and these can be mixed.
+        All arrays should have the same dimensions. If either ``row`` or
+        ``column`` are None, all wells are used.
+
+        Parameters
+        ----------
+        gs : array
+            Grayscale values to convert.
+        dc : array
+            Dot-correction values.
+        gcal : array, optional
+            Grayscale calibration values.
+        row : array, optional
+            Row positions of each grayscale value to convert, zero-indexed.
+        col : array, optional
+            Column positions of each grayscale value to convert,
+            zero-indexed.
+
+        Returns
+        -------
+        array
+            The intensities of each well in umol/m^2/s.
+
+        """
         # If row is None, use all wells
-        if row is None:
-            well = numpy.arange(self.nrows*self.ncols) + 1
+        if (row is None) or (col is None):
+            well = numpy.arange(self.n_rows*self.n_cols)
         else:
             # Transform (row, col) pair into well number
-            row = numpy.array(row)
-            col = numpy.array(col)
-            well = (row - 1)*self.ncols + col
+            row = numpy.atleast_1d(row)
+            col = numpy.atleast_1d(col)
+            well = row*self.n_cols + col
         # Get info for relevant wells
-        led_data = self.calibration_data[self.calibration_data['Well']\
-            .isin(well)]
+        led_data = self.spectral_data.loc[well + 1]
         # Get intensity at measured conditions
         measured_dc = led_data['DC'].values.astype(float)
         measured_gcal = led_data['GS Cal'].values.astype(float)
         measured_intensity = led_data['Intensity (umol/m2/s)']\
             .values.astype(float)
         # Calculate intensity
+        dc = numpy.array(dc)
+        gcal = numpy.array(gcal)
+        gs = numpy.array(gs)
         intensity = measured_intensity * (dc/measured_dc) * \
                                          (gcal/measured_gcal) * \
                                          (gs/4095.)
 
         return intensity
 
-    def get_grayscale(self, row, col, intensity, dc, gcal=255):
+    def get_grayscale(self, intensity, dc, gcal=255, row=None, col=None):
+        """
+        Calculate grayscale values to achieve the specified intensities.
+
+        Parameters can be arrays or single numbers, and these can be mixed.
+        All arrays should have the same dimensions. If either ``row`` or
+        ``column`` are None, all wells are used.
+
+        The returned grayscale values are rounded to the nearest integer,
+        so the resulting intensities may not exactly be the ones specified.
+        If the resulting grayscale value is higher than 4095 for any well,
+        this function raises an error.
+
+        Parameters
+        ----------
+        intensity : array
+            The intensities of each well in umol/m^2/s.
+        dc : array
+            Dot-correction values.
+        gcal : array, optional
+            Grayscale calibration values.
+        row : array, optional
+            Row positions of each grayscale value to convert, zero-indexed.
+        col : array, optional
+            Column positions of each grayscale value to convert,
+            zero-indexed.
+
+        Returns
+        -------
+        array
+            Grayscale values to achieve the specified intensities.
+
+        """
         # If row is None, use all wells
-        if row is None:
-            well = numpy.arange(self.nrows*self.ncols) + 1
+        if (row is None) or (col is None):
+            well = numpy.arange(self.n_rows*self.n_cols)
         else:
             # Transform (row, col) pair into well number
-            row = numpy.array(row)
-            col = numpy.array(col)
-            well = (row - 1)*self.ncols + col
+            row = numpy.atleast_1d(row)
+            col = numpy.atleast_1d(col)
+            well = row*self.n_cols + col
         # Get info for relevant wells
-        led_data = self.calibration_data[self.calibration_data['Well']\
-            .isin(well)]
+        led_data = self.spectral_data.loc[well + 1]
         # Get intensity at measured conditions
         measured_dc = led_data['DC'].values.astype(float)
         measured_gcal = led_data['GS Cal'].values.astype(float)
         measured_intensity = led_data['Intensity (umol/m2/s)']\
             .values.astype(float)
         # Calculate grayscale value
+        dc = numpy.array(dc)
+        gcal = numpy.array(gcal)
+        intensity = numpy.array(intensity)
         gs = 4095. * (intensity/measured_intensity) * \
                      (measured_dc/dc) * \
                      (measured_gcal/gcal)
-        gs = gs.astype(numpy.uint16)
+        gs = numpy.round(gs).astype(numpy.uint16)
         if numpy.any(gs > 4095):
             raise ValueError("not possible to generate requested intensity " + \
                 "with provided dc value. ")
@@ -210,110 +342,313 @@ class LEDSet(object):
         return gs
 
 class LPA(object):
+    """
+    Object that represents an LPA with associated LED sets.
+
+    This object manages the intensity, dot correction, and grayscale
+    calibration values of an LPA, and can convert these from/into the text/
+    binary files that are directly used by an LPA.
+
+    This object works with intensity values in umol/m^2/s, and uses LEDSet
+    objects to convert these into grayscale values before saving LPA files.
+    The names of the LED sets should be specified during the object's
+    creation. Spectral measurements of LED sets are assumed to be present
+    in the folder "{LED_DATA_PATH} / {led_set_name} / {lpa_name}_{channel}"
+    in a file named "{led_set_name}_{lpa_name}_{channel}.xlsx".
+
+    Alternatively, LED layouts can be specified instead of LED set names.
+    A layout is a group of LED sets that use similar LEDs, but with each
+    LED set calibrated against different LPAs. Layouts can have more
+    generic and descriptive names (e.g. "660nm LEDs"), whereas each LED set
+    calibrated against an LPA needs to have a unique name. To use layouts,
+     a file "led_archives.xlsx" should be present in ``LED_DATA_PATH``.
+    This file specifies the mapping from layout name and LPA name to the
+    appropriate LED set name.
+
+    Properties
+    ----------
+    name : str
+        Name of LPA.
+    led_set_names : list, optional
+        LED set names for each channel. Either this or `layout_names`
+        should be specified.
+    layout_names : list, optional
+        Layout names for each channel. Either this or `led_set_names`
+        should be specified.
+
+    Attributes
+    ----------
+    name : str
+        Name of the LPA.
+    led_sets : list
+        LEDSet objects for each channel.
+    n_rows : int
+        Number of rows in the LPA.
+    n_cols : int
+        Number of cols in the LPA.
+    n_channels : int
+        Number of channels (LEDs per well) in the LPA.
+    step_size : int
+        Duration of each time step in `intensity` array, in milliseconds.
+    dc : array
+        Array of size (n_rows, n_cols, n_channels) with dot correction
+        values.
+    gcal : array
+        Array of size (n_rows, n_cols, n_channels) with grayscale
+        calibration values.
+    intensity : array
+        Array of size (n_steps, n_rows, n_cols, n_channels) with light
+        intensity values for each LED, in umol/m^2/s.
+
+    Methods
+    -------
+
+    """
     def __init__(self,
                  name,
-                 led_set_names,
-                 nrows=4,
-                 ncols=6,
-                 nchannels=2,
-                 step_size=1000):
+                 led_set_names=None,
+                 layout_names=None):
+
         # Store name
         self.name = name
-        # Store dimensions
-        self.nrows = nrows
-        self.ncols = ncols
-        self.nchannels = nchannels
-        self.step_size = step_size
-        # Check length of led_set_names
-        if len(led_set_names) != nchannels:
-            raise ValueError("led_set_names should have {} elements"\
-                .format(nchannels))
+
+        # Check that both led_set_names and layout_names are not None
+        if (layout_names is None) and (led_set_names is None):
+            raise ValueError('layout_names or led_set_names should be '
+                'specified')
+
+        # Obtain LED set names from layout names
+        if layout_names is not None:
+            # More than two channels are not supported here
+            if len(layout_names) > 2:
+                raise NotImplementedError("more than 2 channels not supported")
+            # Load layout table
+            layout_table = pandas.read_excel(os.path.join(LED_DATA_PATH,
+                                                          'led_archives.xlsx'))
+            # Obtain led set names
+            led_set_names = []
+            for i, layout in enumerate(layout_names):
+                # Get data for corresponding row in layout table
+                channel = ['Top', 'Bot'][i]
+                layout_row = layout_table[(layout_table['LPA']==name) &\
+                                          (layout_table['Channel']==channel) &\
+                                          (layout_table['Layout']==layout)]
+                # Check for more or less than one hit
+                if len(layout_row) > 1:
+                    raise ValueError("more than one rows with LPA name {},"
+                        " Channel {}, Layout {} in led_archives.xlsx".format(
+                            name, channel, layout))
+                elif len(layout_row) < 1:
+                    raise ValueError("no layout data for LPA name {},"
+                        " Channel {}, Layout {} in led_archives.xlsx".format(
+                            name, channel, layout))
+                # Accumulate
+                led_set_names.append(layout_row.iloc[0]['Archive ID'])
+
         # Initialize led sets
         self.led_sets = []
         for i, led_set_name in enumerate(led_set_names):
-            if led_set_name is None:
-                self.led_sets.append(None)
-            else:
-                self.led_sets.append(LEDSet(name=led_set_name,
-                                            lpa_name=name,
-                                            channel=i,
-                                            nrows=nrows,
-                                            ncols=ncols))
+            file_name = os.path.join(
+                LED_DATA_PATH,
+                led_set_name,
+                "{}_c{}".format(name, i+1),
+                "{}_{}_c{}.xlsx".format(led_set_name, name, i+1))
+            self.led_sets.append(LEDSet(name=led_set_name,
+                                        file_name=file_name))
+
+        # Store dimensions
+        self.n_rows = self.led_sets[0].n_rows
+        self.n_cols = self.led_sets[0].n_cols
+        self.n_channels = len(self.led_sets)
+
+        # Consistency checks on all led sets
+        for led_set in self.led_sets:
+            if self.name != led_set.lpa_name:
+                print "LPA name does not match for LED set {}".format(
+                    led_set.name)
+            if self.n_rows != led_set.n_rows:
+                print "number of rows does not match for LED set {}".format(
+                    led_set.name)
+            if self.n_cols != led_set.n_cols:
+                print "number of columns does not match for LED set {}".format(
+                    led_set.name)
+
+        # Initialize step size in ms
+        self.step_size = 1000
         # Initialize dc and gcal arrays
-        self.dc = numpy.zeros((self.nrows,
-                               self.ncols,
-                               self.nchannels), dtype=int)
-        self.gcal = numpy.zeros((self.nrows,
-                                 self.ncols,
-                                 self.nchannels), dtype=int)
+        self.dc = numpy.zeros((self.n_rows,
+                               self.n_cols,
+                               self.n_channels), dtype=int)
+        self.gcal = numpy.zeros((self.n_rows,
+                                 self.n_cols,
+                                 self.n_channels), dtype=int)
         # Intensity is a 4D array with dimensions [step, row, col, channel]
         self.intensity = numpy.zeros((1,
-                                      self.nrows,
-                                      self.ncols,
-                                      self.nchannels))
+                                      self.n_rows,
+                                      self.n_cols,
+                                      self.n_channels))
 
     def set_all_dc(self, value, channel=None):
+        """
+        Set all dc values for a specific channel or for all of them.
+
+        Parameters
+        ----------
+        value : int
+            Desired dot correction value, from 0 to 63.
+        channel : int, optional
+            Channel for which the specified dot correction value should be
+            assigned. If None, assign to all channels.
+
+        """
         if channel is None:
-            self.dc = numpy.ones((self.nrows,
-                                  self.ncols,
-                                  self.nchannels), dtype=int)*value
+            self.dc.fill(value)
         else:
             self.dc[:,:,channel] = value
 
     def set_all_gcal(self, value, channel=None):
+        """
+        Set all gcal values for a specific channel or for all of them.
+
+        Parameters
+        ----------
+        value : int
+            Desired grayscale calibration value, from 0 to 255.
+        channel : int, optional
+            Channel for which the specified dot correction value should be
+            assigned. If None, assign to all channels.
+
+        """
         if channel is None:
-            self.gcal = numpy.ones((self.nrows,
-                                    self.ncols,
-                                    self.nchannels), dtype=int)*value
+            self.gcal.fill(value)
         else:
             self.gcal[:,:,channel] = value
 
-    def set_nsteps(self, nsteps):
-        if nsteps > self.intensity.shape[0]:
+    def set_n_steps(self, n_steps):
+        """
+        Resize the intensity array to a specific number of time steps.
+
+        Parameters
+        ----------
+        n_steps : int
+            Number of steps to resize the intensity array to. If `n_steps`
+            is lower than the current length of `intensity`, the latter
+            values will be discarded. If `n_steps` is larger, the last
+            timepoint of `intensity` will be repeated.
+
+        """
+        if n_steps > self.intensity.shape[0]:
             # To add steps, repeat the last intensity value
             steps = numpy.expand_dims(self.intensity[-1,:,:,:], axis=0)
             steps = numpy.repeat(steps,
-                                 nsteps - self.intensity.shape[0],
+                                 n_steps - self.intensity.shape[0],
                                  axis=0)
             self.intensity = numpy.append(self.intensity, steps, axis=0)
-        elif nsteps < self.intensity.shape[0]:
+        elif n_steps < self.intensity.shape[0]:
             # To eliminate steps, we will just slice
-            self.intensity = self.intensity[nsteps,:,:,:]
+            self.intensity = self.intensity[:n_steps,:,:,:]
 
-    def set_intensity_staggered(self,
-                                intensity,
-                                intensity_pre,
-                                sampling_steps,
-                                channel,
-                                rows=None,
-                                cols=None):
-        # Populate row and col arrays if necessary
-        if rows is None:
-            rows = numpy.repeat(numpy.arange(self.nrows), self.ncols)
-            cols = numpy.tile(numpy.arange(self.ncols), self.nrows)
-        # Check matching dimensions
-        if len(rows) != len(cols):
-            raise ValueError("rows and cols should have the same length")
-        # Check that the number of sampling steps matches the number of rows and
-        # columns
-        if len(rows) != len(sampling_steps):
-            raise ValueError("Number of sampling steps should match the number"\
-                " of wells")
-        # Expand the intensity array if necessary
-        if self.intensity.shape[0] < len(intensity):
-            self.set_nsteps(len(intensity))
-        # Calculate start of induction step
-        nsteps = self.intensity.shape[0]
-        start_steps = nsteps - sampling_steps
+    def load_dc(self, file_name):
+        """
+        Load dc values from a tab-separated text file.
+
+        Parameters
+        ----------
+        file_name : str
+            Name of the file to load.
+
+        """
+        with open(file_name, 'r') as myfile:
+            file_contents=myfile.read()
+        self.dc = numpy.array([int(si) for si in file_contents.split()],
+                              dtype=int)
+        self.dc.resize(self.n_rows, self.n_cols, self.n_channels)
+
+    def load_gcal(self, file_name):
+        """
+        Load gcal values from a tab-separated text file.
+
+        Parameters
+        ----------
+        file_name : str
+            Name of the file to load.
+
+        """
+        with open(file_name, 'r') as myfile:
+            file_contents=myfile.read()
+        self.gcal = numpy.array([int(si) for si in file_contents.split()],
+                                dtype=int)
+        self.gcal.resize(self.n_rows, self.n_cols, self.n_channels)
+
+    def load_lpf(self, file_name):
+        """
+        Load intensity values from a binary .lpf file.
+
+        Intensity values are calculated from the grayscale values found in
+        the .lpf file using the associated LEDSet objects, and the dc and
+        gcal arrays.
+
+        Parameters
+        ----------
+        file_name : str
+            Name of the file to load.
+
+        """
+        # Load light program file
+        lpf = LPF(file_name)
+        # Check dimensions
+        if lpf.n_channels != self.n_rows*self.n_cols*self.n_channels:
+            raise ValueError("unexpected number of channels in light program "
+                "file")
         # Populate intensity array
-        for row, col, start_step in zip(rows, cols, start_steps):
-            intensity_well = numpy.ones(nsteps)*intensity_pre
-            intensity_well[start_step:] = intensity[:len(intensity_well) - start_step]
-            self.intensity[:, row, col, channel] = intensity_well
+        self.set_n_steps(lpf.n_steps)
+        gs = numpy.resize(lpf.grayscale, (lpf.n_steps,
+                                          self.n_rows,
+                                          self.n_cols,
+                                          self.n_channels))
+        for step in range(lpf.n_steps):
+            for channel in range(self.n_channels):
+                # Get intensities from LED set
+                intensity_sch = self.led_sets[channel].get_intensity(
+                    gs=gs[step,:,:,channel].flatten(),
+                    dc=self.dc[:,:,channel].flatten(),
+                    gcal=self.gcal[:,:,channel].flatten())
+                # Resize and add to intensity array
+                intensity_sch.resize(self.n_rows, self.n_cols)
+                self.intensity[step, :, :, channel] = intensity_sch
+        # Set step size
+        self.step_size = lpf.step_size
+
+    def load_files(self, path):
+        """
+        Load a set of dc, gcal, and lpf files in a specified folder.
+
+        Parameters
+        ----------
+        path : str
+            Folder containing files "dc.txt", "gcal.txt", and "program.lpf"
+            with information on dot correction, grayscale calibration, and
+            a light program file respectively.
+
+        """
+        self.load_dc(os.path.join(path, "dc.txt"))
+        self.load_gcal(os.path.join(path, "gcal.txt"))
+        self.load_lpf(os.path.join(path, "program.lpf"))
 
     def save_dc(self, file_name):
+        """
+        Save dc values in a tab-separated text file.
+
+        The resulting file is ready to be used by an LPA.
+
+        Parameters
+        ----------
+        file_name : str
+            Name of the file to save.
+
+        """
         # Flatten dc array
-        dc = self.dc.reshape((self.nrows, self.nchannels*self.ncols))
+        dc = self.dc.reshape((self.n_rows, self.n_channels*self.n_cols))
         # Generate string to save
         s = ''
         for dc_row in dc:
@@ -325,8 +660,19 @@ class LPA(object):
         f.close()
 
     def save_gcal(self, file_name):
+        """
+        Save gcal values in a tab-separated text file.
+
+        The resulting file is ready to be used by an LPA.
+
+        Parameters
+        ----------
+        file_name : str
+            Name of the file to save.
+
+        """
         # Flatten gcal array
-        gcal = self.gcal.reshape((self.nrows, self.nchannels*self.ncols))
+        gcal = self.gcal.reshape((self.n_rows, self.n_channels*self.n_cols))
         # Generate string to save
         s = ''
         for gcal_row in gcal:
@@ -338,23 +684,34 @@ class LPA(object):
         f.close()
 
     def save_lpf(self, file_name):
-        nsteps = self.intensity.shape[0]
+        """
+        Save grayscale values in a binary .lpf file.
+
+        Grayscale values are calculated from the intensity array using the
+        associated LEDSet objects, and the dc and gcal arrays. The
+        resulting file is ready to be used by an LPA.
+
+        Parameters
+        ----------
+        file_name : str
+            Name of the file to save.
+
+        """
+        n_steps = self.intensity.shape[0]
         # Initialize grayscale array
-        gs = numpy.zeros((nsteps,
-                          self.nrows*self.ncols,
-                          self.nchannels), dtype=int)
+        gs = numpy.zeros((n_steps,
+                          self.n_rows*self.n_cols,
+                          self.n_channels), dtype=int)
         # Convert intensities to grayscale values
-        for channel in range(self.nchannels):
-            dc_channel = self.dc[:,:,channel].flatten()
-            gcal_channel = self.gcal[:,:,channel].flatten()
-            for step in range(nsteps):
+        for step in range(n_steps):
+            for channel in range(self.n_channels):
                 try:
                     gs[step, :, channel] = self.led_sets[channel].get_grayscale(
                         row=None,
                         col=None,
                         intensity=self.intensity[step, :, :, channel].flatten(),
-                        dc=dc_channel,
-                        gcal=gcal_channel,
+                        dc=self.dc[:,:,channel].flatten(),
+                        gcal=self.gcal[:,:,channel].flatten(),
                         )
                 except ValueError as e:
                     print e.args
@@ -362,15 +719,32 @@ class LPA(object):
                         step,
                         channel) + e.args[0],)
                     raise
-        # Create LPFFile object
-        lpf_file = LPFFile(well_nchannels=self.nchannels)
-        lpf_file.total_nchannels = self.nchannels*self.nrows*self.ncols
-        lpf_file.step_size = self.step_size
-        lpf_file.nsteps = nsteps
-        lpf_file.grayscale = gs
-        lpf_file.save(file_name)
+        # Flatten dimension corresponding to channels
+        gs.resize(n_steps, self.n_rows*self.n_cols*self.n_channels)
+        # Create LPF object and save
+        lpf = LPF()
+        lpf.n_channels = self.n_channels*self.n_rows*self.n_cols
+        lpf.step_size = self.step_size
+        lpf.n_steps = n_steps
+        lpf.grayscale = gs
+        lpf.save(file_name)
 
     def save_files(self, path='.'):
+        """
+        Save dc, gcal, and .lpf files from the contents of this object.
+
+        A folder with the name of this object will be created. Inside,
+        files "dc.txt", "gcal.txt", and "program.lpf" will be created.
+        An additional empty text file with the name of this object will
+        be created.
+
+        Parameters
+        ----------
+        path : str, optional
+            A folder with the name of this object containing all files will
+            be created in the directory specified by `path`.
+
+        """
         # Add name of lpa to path
         path = os.path.join(path, self.name)
         # Create folder if necessary
@@ -383,3 +757,33 @@ class LPA(object):
         # Save additional empty file with LPA's name
         open(os.path.join(path, self.name + ".txt"), 'w').close()
 
+    def set_intensity_staggered(self,
+                                intensity,
+                                intensity_pre,
+                                sampling_steps,
+                                channel,
+                                rows=None,
+                                cols=None):
+        # Populate row and col arrays if necessary
+        if rows is None:
+            rows = numpy.repeat(numpy.arange(self.n_rows), self.n_cols)
+            cols = numpy.tile(numpy.arange(self.n_cols), self.n_rows)
+        # Check matching dimensions
+        if len(rows) != len(cols):
+            raise ValueError("rows and cols should have the same length")
+        # Check that the number of sampling steps matches the number of rows and
+        # columns
+        if len(rows) != len(sampling_steps):
+            raise ValueError("Number of sampling steps should match the number"\
+                " of wells")
+        # Expand the intensity array if necessary
+        if self.intensity.shape[0] < len(intensity):
+            self.set_n_steps(len(intensity))
+        # Calculate start of induction step
+        n_steps = self.intensity.shape[0]
+        start_steps = n_steps - sampling_steps
+        # Populate intensity array
+        for row, col, start_step in zip(rows, cols, start_steps):
+            intensity_well = numpy.ones(n_steps)*intensity_pre
+            intensity_well[start_step:] = intensity[:len(intensity_well) - start_step]
+            self.intensity[:, row, col, channel] = intensity_well
