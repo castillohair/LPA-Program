@@ -479,9 +479,9 @@ class LPA(object):
         self.dc = numpy.zeros((self.n_rows,
                                self.n_cols,
                                self.n_channels), dtype=int)
-        self.gcal = numpy.zeros((self.n_rows,
+        self.gcal = numpy.ones((self.n_rows,
                                  self.n_cols,
-                                 self.n_channels), dtype=int)
+                                 self.n_channels), dtype=int)*255
         # Intensity is a 4D array with dimensions [step, row, col, channel]
         self.intensity = numpy.zeros((1,
                                       self.n_rows,
@@ -757,15 +757,49 @@ class LPA(object):
         # Save additional empty file with LPA's name
         open(os.path.join(path, self.name + ".txt"), 'w').close()
 
-    def set_intensity_staggered(self,
-                                intensity,
-                                intensity_pre,
-                                sampling_steps,
-                                channel,
-                                rows=None,
-                                cols=None):
+    def set_timecourse_staggered(self,
+                                 intensity,
+                                 intensity_pre,
+                                 sampling_steps,
+                                 channel,
+                                 rows=None,
+                                 cols=None):
+        """
+        Set an intensity timecourse on many wells, with staggered delays.
+
+        The intensity timecourse provided will be displayed on all wells
+        indicated by `rows` and `cols`. However, there will be a different
+        delay on each well before the intensity timecourse, so that by the
+        end of the experiment, well "i" will have seen the intensiy signal
+        from ``intensity[0]`` to ``intensity[sampling_steps[i]]``. If the
+        samples in the LPA are in steady state (e.g. cells in exponential
+        phase), measuring all samples at the end of the experiment is
+        equivalent to having one big sample and taking measurements at
+        timepoints `sampling_steps[i]*step_size` (given in miliseconds).
+
+        Parameters
+        ----------
+        intensity : array
+            Array with intensity values, one per time step. If
+            ``len(intensity)`` is larger than the object's intensity array,
+            only the latter part will contain the input `intensity`, and
+            the rest will be filled with `intensity_pre`. If the object's
+            intensity array is shorter, it will be made large enough to
+            hold the `intensity` parameter.
+        intensity_pre : float
+            Intensity value to use before starting the timecourse.
+        sampling_steps : array
+            Step numbers at which measurements should be taken.
+        channel : int
+            LED chanel to use.
+        rows, cols : array, optional
+            Row and column indices of the wells to use. The length of these
+            should be the same as the length of `sampling_steps`.If any of
+            these is None, use all wells.
+
+        """
         # Populate row and col arrays if necessary
-        if rows is None:
+        if (rows is None) or (cols is None):
             rows = numpy.repeat(numpy.arange(self.n_rows), self.n_cols)
             cols = numpy.tile(numpy.arange(self.n_cols), self.n_rows)
         # Check matching dimensions
@@ -774,7 +808,7 @@ class LPA(object):
         # Check that the number of sampling steps matches the number of rows and
         # columns
         if len(rows) != len(sampling_steps):
-            raise ValueError("Number of sampling steps should match the number"\
+            raise ValueError("number of sampling steps should match the number"\
                 " of wells")
         # Expand the intensity array if necessary
         if self.intensity.shape[0] < len(intensity):
@@ -785,5 +819,14 @@ class LPA(object):
         # Populate intensity array
         for row, col, start_step in zip(rows, cols, start_steps):
             intensity_well = numpy.ones(n_steps)*intensity_pre
-            intensity_well[start_step:] = intensity[:len(intensity_well) - start_step]
+            intensity_well[start_step:] = intensity[:n_steps - start_step]
             self.intensity[:, row, col, channel] = intensity_well
+
+    def discretize_intensity(self):
+        pass
+
+    def optimize_dc(self, channel, uniform=True):
+        pass
+
+    def plot_intensity(self, channel, file_name=None):
+        pass

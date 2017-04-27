@@ -31,18 +31,21 @@ class TestLPA(unittest.TestCase):
                                             [9, 7],
                                             [9, 7],
                                             [9, 7]],
+
                                            [[9, 7],
                                             [9, 7],
                                             [9, 7],
                                             [9, 7],
                                             [9, 7],
                                             [9, 7]],
+
                                            [[9, 7],
                                             [9, 7],
                                             [9, 7],
                                             [9, 7],
                                             [9, 7],
                                             [9, 7]],
+
                                            [[9, 7],
                                             [9, 7],
                                             [9, 7],
@@ -55,18 +58,21 @@ class TestLPA(unittest.TestCase):
                                               [201, 153],
                                               [208, 178],
                                               [218, 171]],
+
                                              [[210, 197],
                                               [236, 174],
                                               [208, 189],
                                               [205, 177],
                                               [201, 196],
                                               [205, 186]],
+
                                              [[209, 175],
                                               [203, 175],
                                               [204, 187],
                                               [226, 182],
                                               [202, 183],
                                               [223, 231]],
+
                                              [[242, 182],
                                               [210, 199],
                                               [201, 215],
@@ -137,18 +143,21 @@ class TestLPA(unittest.TestCase):
                                         [ 10,  31],
                                         [ 45,  55],
                                         [  7,  58]],
+
                                        [[ 39,  41],
                                         [ 32,  12],
                                         [ 62,  44],
                                         [  1,  24],
                                         [ 41,  23],
                                         [ 30,  26]],
+
                                        [[ 23,   4],
                                         [ 44,  62],
                                         [ 42,  44],
                                         [ 37,  33],
                                         [ 58,  32],
                                         [ 19,  12]],
+
                                        [[ 53,   1],
                                         [ 15,  44],
                                         [ 18,  51],
@@ -161,18 +170,21 @@ class TestLPA(unittest.TestCase):
                                           [160, 250],
                                           [158, 185],
                                           [ 71,  38]],
+
                                          [[219, 240],
                                           [187,  65],
                                           [154, 205],
                                           [236, 243],
                                           [159,  88],
                                           [ 64, 237]],
+
                                          [[113, 143],
                                           [197, 164],
                                           [ 57, 252],
                                           [144,  21],
                                           [234, 118],
                                           [105, 238]],
+
                                          [[181, 152],
                                           [ 84, 230],
                                           [ 36, 153],
@@ -296,6 +308,92 @@ class TestLPA(unittest.TestCase):
             3715, 4095, 2017, 4067,  272, 3744,  297, 3396, 2930, 1133,   47,
             2433, 3058, 3042, 2631, 3782,  336, 3292, 1142, 3703, 1172, 1639,
              196,  549, 2318,   16]])
+
+        # Data for testing set_timecourse_staggered()
+        self.timecourse_ch0 = numpy.linspace(0,20,231)
+        self.timecourse_pre_ch0 = 2
+        self.timecourse_sampling_steps_ch0 = numpy.arange(0,231,10).astype(int)
+        self.intensity_well_ch0_1 = [
+            numpy.append(2*numpy.ones(231), []),
+            numpy.append(2*numpy.ones(221), numpy.linspace(0,20,231)[:10]),
+            numpy.append(2*numpy.ones(211), numpy.linspace(0,20,231)[:20]),
+            numpy.append(2*numpy.ones(201), numpy.linspace(0,20,231)[:30]),
+            numpy.append(2*numpy.ones(191), numpy.linspace(0,20,231)[:40]),
+            numpy.append(2*numpy.ones(181), numpy.linspace(0,20,231)[:50]),
+            numpy.append(2*numpy.ones(171), numpy.linspace(0,20,231)[:60]),
+            numpy.append(2*numpy.ones(161), numpy.linspace(0,20,231)[:70]),
+            numpy.append(2*numpy.ones(151), numpy.linspace(0,20,231)[:80]),
+            numpy.append(2*numpy.ones(141), numpy.linspace(0,20,231)[:90]),
+            numpy.append(2*numpy.ones(131), numpy.linspace(0,20,231)[:100]),
+            numpy.append(2*numpy.ones(121), numpy.linspace(0,20,231)[:110]),
+            numpy.append(2*numpy.ones(111), numpy.linspace(0,20,231)[:120]),
+            numpy.append(2*numpy.ones(101), numpy.linspace(0,20,231)[:130]),
+            numpy.append(2*numpy.ones(91),  numpy.linspace(0,20,231)[:140]),
+            numpy.append(2*numpy.ones(81),  numpy.linspace(0,20,231)[:150]),
+            numpy.append(2*numpy.ones(71),  numpy.linspace(0,20,231)[:160]),
+            numpy.append(2*numpy.ones(61),  numpy.linspace(0,20,231)[:170]),
+            numpy.append(2*numpy.ones(51),  numpy.linspace(0,20,231)[:180]),
+            numpy.append(2*numpy.ones(41),  numpy.linspace(0,20,231)[:190]),
+            numpy.append(2*numpy.ones(31),  numpy.linspace(0,20,231)[:200]),
+            numpy.append(2*numpy.ones(21),  numpy.linspace(0,20,231)[:210]),
+            numpy.append(2*numpy.ones(11),  numpy.linspace(0,20,231)[:220]),
+            numpy.append(2*numpy.ones(1),   numpy.linspace(0,20,231)[:230]),
+            ]
+        self.intensity_well_ch0_2 = [
+            numpy.append(2*numpy.ones(720), []),
+            numpy.append(2*numpy.ones(710), numpy.linspace(0,20,231)[:10]),
+            numpy.append(2*numpy.ones(700), numpy.linspace(0,20,231)[:20]),
+            numpy.append(2*numpy.ones(690), numpy.linspace(0,20,231)[:30]),
+            numpy.append(2*numpy.ones(680), numpy.linspace(0,20,231)[:40]),
+            numpy.append(2*numpy.ones(670), numpy.linspace(0,20,231)[:50]),
+            numpy.append(2*numpy.ones(660), numpy.linspace(0,20,231)[:60]),
+            numpy.append(2*numpy.ones(650), numpy.linspace(0,20,231)[:70]),
+            numpy.append(2*numpy.ones(640), numpy.linspace(0,20,231)[:80]),
+            numpy.append(2*numpy.ones(630), numpy.linspace(0,20,231)[:90]),
+            numpy.append(2*numpy.ones(620), numpy.linspace(0,20,231)[:100]),
+            numpy.append(2*numpy.ones(610), numpy.linspace(0,20,231)[:110]),
+            numpy.append(2*numpy.ones(600), numpy.linspace(0,20,231)[:120]),
+            numpy.append(2*numpy.ones(590), numpy.linspace(0,20,231)[:130]),
+            numpy.append(2*numpy.ones(580),  numpy.linspace(0,20,231)[:140]),
+            numpy.append(2*numpy.ones(570),  numpy.linspace(0,20,231)[:150]),
+            numpy.append(2*numpy.ones(560),  numpy.linspace(0,20,231)[:160]),
+            numpy.append(2*numpy.ones(550),  numpy.linspace(0,20,231)[:170]),
+            numpy.append(2*numpy.ones(540),  numpy.linspace(0,20,231)[:180]),
+            numpy.append(2*numpy.ones(530),  numpy.linspace(0,20,231)[:190]),
+            numpy.append(2*numpy.ones(520),  numpy.linspace(0,20,231)[:200]),
+            numpy.append(2*numpy.ones(510),  numpy.linspace(0,20,231)[:210]),
+            numpy.append(2*numpy.ones(500),  numpy.linspace(0,20,231)[:220]),
+            numpy.append(2*numpy.ones(490),   numpy.linspace(0,20,231)[:230]),
+            ]
+        self.timecourse_ch1 = numpy.linspace(50,30,480)
+        self.timecourse_pre_ch1 = 5
+        self.timecourse_sampling_steps_ch1 = numpy.arange(0,461,20).astype(int)
+        self.intensity_well_ch1_2 = [
+            numpy.append(5*numpy.ones(720), []),
+            numpy.append(5*numpy.ones(700), numpy.linspace(50,30,480)[:20]),
+            numpy.append(5*numpy.ones(680), numpy.linspace(50,30,480)[:40]),
+            numpy.append(5*numpy.ones(660), numpy.linspace(50,30,480)[:60]),
+            numpy.append(5*numpy.ones(640), numpy.linspace(50,30,480)[:80]),
+            numpy.append(5*numpy.ones(620), numpy.linspace(50,30,480)[:100]),
+            numpy.append(5*numpy.ones(600), numpy.linspace(50,30,480)[:120]),
+            numpy.append(5*numpy.ones(580), numpy.linspace(50,30,480)[:140]),
+            numpy.append(5*numpy.ones(560), numpy.linspace(50,30,480)[:160]),
+            numpy.append(5*numpy.ones(540), numpy.linspace(50,30,480)[:180]),
+            numpy.append(5*numpy.ones(520), numpy.linspace(50,30,480)[:200]),
+            numpy.append(5*numpy.ones(500), numpy.linspace(50,30,480)[:220]),
+            numpy.append(5*numpy.ones(480), numpy.linspace(50,30,480)[:240]),
+            numpy.append(5*numpy.ones(460), numpy.linspace(50,30,480)[:260]),
+            numpy.append(5*numpy.ones(440), numpy.linspace(50,30,480)[:280]),
+            numpy.append(5*numpy.ones(420), numpy.linspace(50,30,480)[:300]),
+            numpy.append(5*numpy.ones(400), numpy.linspace(50,30,480)[:320]),
+            numpy.append(5*numpy.ones(380), numpy.linspace(50,30,480)[:340]),
+            numpy.append(5*numpy.ones(360), numpy.linspace(50,30,480)[:360]),
+            numpy.append(5*numpy.ones(340), numpy.linspace(50,30,480)[:380]),
+            numpy.append(5*numpy.ones(320), numpy.linspace(50,30,480)[:400]),
+            numpy.append(5*numpy.ones(300), numpy.linspace(50,30,480)[:420]),
+            numpy.append(5*numpy.ones(280), numpy.linspace(50,30,480)[:440]),
+            numpy.append(5*numpy.ones(260), numpy.linspace(50,30,480)[:460]),
+            ]
 
     def tearDown(self):
         # Delete temporary directory
@@ -535,3 +633,78 @@ class TestLPA(unittest.TestCase):
         self.assertEqual(lpf.step_size, self.step_size_to_save_exp)
         self.assertEqual(lpf.n_steps, self.n_steps_to_save_exp)
         numpy.testing.assert_array_equal(lpf.grayscale, self.gs_to_save_exp)
+
+    def test_set_timecourse_staggered_1(self):
+        # Create object
+        lpa = lpadesign.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        # Set timecourse
+        lpa.set_timecourse_staggered(
+            intensity=self.timecourse_ch0,
+            intensity_pre=self.timecourse_pre_ch0,
+            sampling_steps=self.timecourse_sampling_steps_ch0,
+            channel=0)
+        # Test the intensity array
+        self.assertEqual(lpa.intensity.shape,
+                         (len(self.timecourse_ch0), 4, 6, 2))
+        numpy.testing.assert_array_equal(lpa.intensity[:,:,:,1], 0)
+        n_steps = lpa.intensity.shape[0]
+        for row in range(4):
+            for col in range(6):
+                i = row*6 + col
+                intensity_well = lpa.intensity[:,row,col,0]
+                intensity_exp = self.intensity_well_ch0_1[i]
+                numpy.testing.assert_array_equal(intensity_well, intensity_exp)
+
+    def test_set_timecourse_staggered_2(self):
+        # Create object
+        lpa = lpadesign.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        # Set long experiment duration
+        lpa.set_n_steps(720)
+        # Set timecourse
+        lpa.set_timecourse_staggered(
+            intensity=self.timecourse_ch0,
+            intensity_pre=self.timecourse_pre_ch0,
+            sampling_steps=self.timecourse_sampling_steps_ch0,
+            channel=0)
+        # Test the intensity array
+        self.assertEqual(lpa.intensity.shape, (720, 4, 6, 2))
+        numpy.testing.assert_array_equal(lpa.intensity[:,:,:,1], 0)
+        n_steps = lpa.intensity.shape[0]
+        for row in range(4):
+            for col in range(6):
+                i = row*6 + col
+                intensity_well = lpa.intensity[:,row,col,0]
+                intensity_exp = self.intensity_well_ch0_2[i]
+                numpy.testing.assert_array_equal(intensity_well, intensity_exp)
+
+    def test_set_timecourse_staggered_3(self):
+        # Create object
+        lpa = lpadesign.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        # Set long experiment duration
+        lpa.set_n_steps(720)
+        # Set timecourse
+        lpa.set_timecourse_staggered(
+            intensity=self.timecourse_ch0,
+            intensity_pre=self.timecourse_pre_ch0,
+            sampling_steps=self.timecourse_sampling_steps_ch0,
+            channel=0)
+        lpa.set_timecourse_staggered(
+            intensity=self.timecourse_ch1,
+            intensity_pre=self.timecourse_pre_ch1,
+            sampling_steps=self.timecourse_sampling_steps_ch1,
+            channel=1)
+        # Test the intensity array
+        self.assertEqual(lpa.intensity.shape, (720, 4, 6, 2))
+        n_steps = lpa.intensity.shape[0]
+        for row in range(4):
+            for col in range(6):
+                i = row*6 + col
+                # Channel 0
+                intensity_well = lpa.intensity[:,row,col,0]
+                intensity_exp = self.intensity_well_ch0_2[i]
+                numpy.testing.assert_array_equal(intensity_well, intensity_exp)
+                # Channel 1
+                intensity_well = lpa.intensity[:,row,col,1]
+                intensity_exp = self.intensity_well_ch1_2[i]
+                numpy.testing.assert_array_equal(intensity_well, intensity_exp)
+
