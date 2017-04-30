@@ -395,6 +395,116 @@ class TestLPA(unittest.TestCase):
             numpy.append(5*numpy.ones(260), numpy.linspace(50,30,480)[:460]),
             ]
 
+        # Expected results for discretized intensities
+        self.discretize_intensity_exp_ch0 = numpy.array([
+            0.0000000000000000,
+            0.0209613204944967,
+            0.0230763289786903,
+            0.0360926664070212,
+            0.0580224283177205,
+            0.0776529633856030,
+            0.1152491753734160,
+            0.1639765602383730,
+            0.2438400514385280,
+            0.3428016941817840,
+            0.4938244188660900,
+            0.6956197252331620,
+            1.0039931123265100,
+            1.4314207016425200,
+            2.0311816941890500,
+            2.9010930927476300,
+            4.1527956999276000,
+            5.9146200961362100,
+            8.4484479021329500,
+            12.0552681006521000,
+            17.2086679229450000,
+            24.5504475242161000,
+            35.0339810946310000,
+            50.0050101226824000,
+            ])
+        self.discretize_intensity_exp_ch0.resize(4,6)
+        self.discretize_intensity_exp_ch1 = numpy.array([
+            20.0033587018173,
+            20.0028387345990,
+            19.9974104986080,
+            19.9981827280199,
+            19.9962558829695,
+            19.9973428295973,
+            19.9998140444372,
+            20.0033407159095,
+            19.9994952781250,
+            20.0030764944029,
+            20.0012372732899,
+            20.0031243370644,
+            20.0017468343350,
+            20.0017964504625,
+            20.0017147614309,
+            20.0014866563969,
+            20.0024830093134,
+            19.9994195168387,
+            19.9997635670353,
+            20.0028384437117,
+            19.9984287564850,
+            20.0025075705468,
+            20.0027381277014,
+            20.0016796626109,
+            ])
+        self.discretize_intensity_exp_ch1.resize(4,6)
+
+        # Expected results for optimize dc
+        self.optimize_dc_exp = numpy.array([7,
+                                            7,
+                                            7,
+                                            6,
+                                            7,
+                                            6,
+                                            8,
+                                            7,
+                                            7,
+                                            7,
+                                            8,
+                                            7,
+                                            7,
+                                            7,
+                                            7,
+                                            7,
+                                            7,
+                                            9,
+                                            7,
+                                            8,
+                                            8,
+                                            9,
+                                            7,
+                                            10,
+                                            ], dtype=int)
+        self.optimize_dc_exp.resize(4,6)
+        self.optimize_dc_min_exp = numpy.array([8,
+                                                8,
+                                                8,
+                                                8,
+                                                8,
+                                                8,
+                                                8,
+                                                8,
+                                                8,
+                                                8,
+                                                8,
+                                                8,
+                                                8,
+                                                8,
+                                                8,
+                                                8,
+                                                8,
+                                                9,
+                                                8,
+                                                8,
+                                                8,
+                                                9,
+                                                8,
+                                                10,
+                                                ], dtype=int)
+        self.optimize_dc_min_exp.resize(4,6)
+
     def tearDown(self):
         # Delete temporary directory
         if os.path.exists(self.temp_dir):
@@ -552,7 +662,8 @@ class TestLPA(unittest.TestCase):
         # Tests on intesity array
         self.assertEqual(lpa.intensity.shape, self.intensity_to_load_exp.shape)
         numpy.testing.assert_almost_equal(lpa.intensity,
-                                          self.intensity_to_load_exp)
+                                          self.intensity_to_load_exp,
+                                          decimal=12)
 
     def test_load_files(self):
         # Create object and attempt to load
@@ -566,7 +677,8 @@ class TestLPA(unittest.TestCase):
         # Tests on intesity array
         self.assertEqual(lpa.intensity.shape, self.intensity_to_load_exp.shape)
         numpy.testing.assert_almost_equal(lpa.intensity,
-                                          self.intensity_to_load_exp)
+                                          self.intensity_to_load_exp,
+                                          decimal=12)
 
     def test_save_dc(self):
         # Create object and attempt to save
@@ -708,3 +820,86 @@ class TestLPA(unittest.TestCase):
                 intensity_exp = self.intensity_well_ch1_2[i]
                 numpy.testing.assert_array_equal(intensity_well, intensity_exp)
 
+    def test_discretize_intensity(self):
+        # Create object
+        lpa = lpadesign.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        # Set dcs and gcals
+        lpa.set_all_dc(8, channel=0)
+        lpa.dc[3, 5, 0] = 9
+        lpa.set_all_gcal(225, channel=0)
+        lpa.set_all_dc(7, channel=1)
+        lpa.set_all_gcal(255, channel=1)
+        # Set intensities
+        intensity_ch0 = numpy.append([0], numpy.logspace(numpy.log10(0.02),
+                                                         numpy.log10(50),
+                                                         23))
+        intensity_ch0.resize(4, 6)
+        lpa.intensity[0, :, :, 0] = intensity_ch0
+        lpa.intensity[0, :, :, 1] = 20
+        # Extend to 10 timesteps
+        lpa.set_n_steps(10)
+        # Discretize
+        lpa.discretize_intensity()
+        # Test
+        for step in range(lpa.intensity.shape[0]):
+            numpy.testing.assert_almost_equal(lpa.intensity[step,:,:,0],
+                                              self.discretize_intensity_exp_ch0,
+                                              decimal=12)
+            numpy.testing.assert_almost_equal(lpa.intensity[step,:,:,1],
+                                              self.discretize_intensity_exp_ch1,
+                                              decimal=12)
+
+    def test_optimize_dc_1(self):
+        # Create object
+        lpa = lpadesign.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        # Set dcs and gcals
+        lpa.set_all_dc(8, channel=0)
+        lpa.set_all_gcal(225, channel=0)
+        lpa.set_all_dc(7, channel=1)
+        lpa.set_all_gcal(255, channel=1)
+        # Extend to 10 timesteps
+        lpa.set_n_steps(10)
+        # Set intensities
+        lpa.intensity[3, :, :, 1] = 30
+        # Optimize dcs for channel 1
+        lpa.optimize_dc(channel=1)
+        # Test
+        numpy.testing.assert_array_equal(lpa.dc[:,:,0], 8)
+        numpy.testing.assert_array_equal(lpa.dc[:,:,1], self.optimize_dc_exp)
+
+    def test_optimize_dc_2(self):
+        # Create object
+        lpa = lpadesign.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        # Set dcs and gcals
+        lpa.set_all_dc(8, channel=0)
+        lpa.set_all_gcal(225, channel=0)
+        lpa.set_all_dc(7, channel=1)
+        lpa.set_all_gcal(255, channel=1)
+        # Extend to 10 timesteps
+        lpa.set_n_steps(10)
+        # Set intensities
+        lpa.intensity[3, :, :, 1] = 30
+        # Optimize dcs for channel 1
+        lpa.optimize_dc(channel=1, min_dc=8)
+        # Test
+        numpy.testing.assert_array_equal(lpa.dc[:,:,0], 8)
+        numpy.testing.assert_array_equal(lpa.dc[:,:,1],
+                                         self.optimize_dc_min_exp)
+
+    def test_optimize_dc_3(self):
+        # Create object
+        lpa = lpadesign.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        # Set dcs and gcals
+        lpa.set_all_dc(8, channel=0)
+        lpa.set_all_gcal(225, channel=0)
+        lpa.set_all_dc(7, channel=1)
+        lpa.set_all_gcal(255, channel=1)
+        # Extend to 10 timesteps
+        lpa.set_n_steps(10)
+        # Set intensities
+        lpa.intensity[3, :, :, 1] = 30
+        # Optimize dcs for channel 1
+        lpa.optimize_dc(channel=1, uniform=True)
+        # Test
+        numpy.testing.assert_array_equal(lpa.dc[:,:,0], 8)
+        numpy.testing.assert_array_equal(lpa.dc[:,:,1], 10)

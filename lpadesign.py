@@ -301,9 +301,9 @@ class LEDSet(object):
         gcal : array, optional
             Grayscale calibration values.
         row : array, optional
-            Row positions of each grayscale value to convert, zero-indexed.
+            Row positions of each intensity value to convert, zero-indexed.
         col : array, optional
-            Column positions of each grayscale value to convert,
+            Column positions of each intensity value to convert,
             zero-indexed.
 
         Returns
@@ -340,6 +340,124 @@ class LEDSet(object):
                 "with provided dc value. ")
 
         return gs
+
+    def discretize_intensity(self, intensity, dc, gcal=255, row=None, col=None):
+        """
+        Discretize intensity values.
+
+        At constant dc and gcal values, intensities are represented by
+        integer grayscale values ranging from 0 to 4095. Because of this
+        finite resolution, only a discrete number of intensity values are
+        possible for any given well. This function takes this into account
+        to convert the provided intensity values to the closest values that
+        are possible at the given dc and gcal values.
+
+        Parameters
+        ----------
+        intensity : array
+            The intensities of each well in umol/m^2/s.
+        dc : array
+            Dot-correction values.
+        gcal : array, optional
+            Grayscale calibration values.
+        row : array, optional
+            Row positions of each intensity value to discretize,
+            zero-indexed.
+        col : array, optional
+            Column positions of each intensity value to discretize,
+            zero-indexed.
+
+        Returns
+        -------
+        array
+            Discretized intensity values
+
+        Notes
+        -----
+        This function achieves discretization by first converting the
+        provided intensity values to integer grayscale values using
+        `get_grayscale`, and then converting those back to intensity values
+        with `get_intensity`.
+
+        """
+        # Convert to grayscale, then to intensity
+        gs = self.get_grayscale(intensity, dc, gcal, row, col)
+        return self.get_intensity(gs, dc, gcal, row, col)
+
+    def optimize_dc(self,
+                    intensity,
+                    gcal=255,
+                    min_dc=1,
+                    uniform=False,
+                    row=None,
+                    col=None,
+                    ):
+        """
+        Get the lowest dc value so that a specified intensity is possible.
+
+        At constant dc and gcal values, intensities are represented by
+        integer grayscale values ranging from 0 to 4095. Therefore, at a
+        given dc value there is a highest possible intensity. While larger
+        dc values allow for larger intensities, resolution is lost, as each
+        grayscale step represents a larger increase in intensity as well.
+        This function calculates the lowest dc required to achieve a
+        certain intensity, which also maximizes the resolution for lower
+        intensities.
+
+        Parameters
+        ----------
+        intensity : array
+            The intensities of each well in umol/m^2/s.
+        gcal : array, optional
+            Grayscale calibration values.
+        min_dc : array, optional
+            Minimum dc value to return.
+        uniform : bool, optional
+            Whether all returned dc values should be the same.
+        row : array, optional
+            Row positions of each intensity value, zero-indexed.
+        col : array, optional
+            Column positions of each intensity value, zero-indexed.
+
+        Returns
+        -------
+        array
+            Optimized dot correction values.
+
+        """
+        # If row is None, use all wells
+        if (row is None) or (col is None):
+            well = numpy.arange(self.n_rows*self.n_cols)
+        else:
+            # Transform (row, col) pair into well number
+            row = numpy.atleast_1d(row)
+            col = numpy.atleast_1d(col)
+            well = row*self.n_cols + col
+        # Get info for relevant wells
+        led_data = self.spectral_data.loc[well + 1]
+        # Get intensity at measured conditions
+        measured_dc = led_data['DC'].values.astype(float)
+        measured_gcal = led_data['GS Cal'].values.astype(float)
+        measured_intensity = led_data['Intensity (umol/m2/s)']\
+            .values.astype(float)
+        # Calculate dc value
+        # We calculate the dot correction value required to achieve the desired
+        # intensity with 4095 grayscale, and then round up.
+        gcal = numpy.array(gcal)
+        intensity = numpy.array(intensity)
+        dc = measured_dc * (intensity/measured_intensity) * \
+                           (measured_gcal/gcal)
+        dc = numpy.ceil(dc).astype(numpy.uint16)
+        # Saturate
+        dc = numpy.maximum(dc, min_dc)
+        # Make uniform if necessary
+        if uniform:
+            dc.fill(numpy.max(dc))
+        # Verify that the dc values are feasible
+        if numpy.any(dc > 63):
+            raise ValueError("not possible to generate requested intensity")
+
+        return dc
 
 class LPA(object):
     """
@@ -823,10 +941,82 @@ class LPA(object):
             self.intensity[:, row, col, channel] = intensity_well
 
     def discretize_intensity(self):
-        pass
+        """
+        Discretize the values in the intensity array.
 
-    def optimize_dc(self, channel, uniform=True):
-        pass
+        At constant dc and gcal values, intensities are represented by
+        integer grayscale values ranging from 0 to 4095. Because of this
+        finite resolution, only a discrete number of intensity values are
+        possible for any given well. This function takes this into account
+        to convert the object's intensity values to the closest values that
+        are possible at the current dc and gcal values.
+
+        """
+        # A separate array will be created and populated. This way, if something
+        # goes wrong, we will not overwrite the object's intensity array.
+        intensity = numpy.zeros_like(self.intensity)
+
+        for step in range(self.intensity.shape[0]):
+            for channel in range(self.n_channels):
+                intensity_sch = self.intensity[step, :, :, channel].flatten()
+                # Call to LEDSet.discretize_intensity is inside a try block in
+                # case the specified intensity is not possible.
+                try:
+                    intensity_sch = self.led_sets[channel].discretize_intensity(
+                        intensity=intensity_sch,
+                        dc=self.dc[:,:,channel].flatten(),
+                        gcal=self.gcal[:,:,channel].flatten(),
+                        )
+                except ValueError as e:
+                    print e.args
+                    e.args = ("on step {}, channel {}: ".format(
+                        step,
+                        channel) + e.args[0],)
+                    raise
+                else:
+                    intensity_sch.resize(self.n_rows, self.n_cols)
+                    intensity[step, :, :, channel] = intensity_sch
+
+        # At this point assume that everything worked, and replace the intensity
+        # array
+        self.intensity = intensity
+
+    def optimize_dc(self, channel, min_dc=1, uniform=False):
+        """
+        Get the lowest dc value so that a specified intensity is possible.
+
+        At constant dc and gcal values, intensities are represented by
+        integer grayscale values ranging from 0 to 4095. Therefore, at a
+        given dc value there is a highest possible intensity. While larger
+        dc values allow for larger intensities, resolution is lost, as each
+        grayscale step represents a larger increase in intensity as well.
+        This function calculates the lowest dc required to achieve the
+        maximum intensity in each well, which also maximizes the resolution
+        for lower intensities.
+
+        Parameters
+        ----------
+        channel : int
+            Channel on which to optimize dot correction.
+        min_dc : array, optional
+            Minimum dc value to return.
+        uniform : bool, optional
+            Whether all returned dc values should be the same.
+
+        """
+        # Extract intensities from specified channel
+        intensity = self.intensity[:, :, :, channel]
+        # Obtain the maximum intensity per well
+        intensity_max = intensity.max(axis=0)
+        # Obtain optimal dc values
+        dc = self.led_sets[channel].optimize_dc(
+            intensity=intensity_max.flatten(),
+            gcal=self.gcal[:, :, channel].flatten(),
+            min_dc=min_dc,
+            uniform=uniform)
+        # Resize and replace current dc values
+        dc.resize(self.n_rows, self.n_cols)
+        self.dc[:, :, channel] = dc
 
     def plot_intensity(self, channel, file_name=None):
         pass

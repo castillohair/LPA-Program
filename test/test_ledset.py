@@ -62,7 +62,8 @@ class TestLEDSet(unittest.TestCase):
                          11.2471841967786,
                          11.8171084339057,
                          10.6232870495689,
-                         ]))
+                         ]),
+            decimal=12)
 
     def test_get_intensity_2(self):
         # Load
@@ -122,7 +123,8 @@ class TestLEDSet(unittest.TestCase):
                          43.627827499304,
                          45.259525301859,
                          24.465430075157,
-                         ]))
+                         ]),
+            decimal=12)
 
     def test_get_intensity_3(self):
         # Load
@@ -133,7 +135,8 @@ class TestLEDSet(unittest.TestCase):
         self.assertEqual(len(intensity), 1)
         numpy.testing.assert_almost_equal(
             intensity,
-            0.573696234895)
+            0.573696234895,
+            decimal=12)
 
     def test_get_intensity_4(self):
         # Load
@@ -155,7 +158,8 @@ class TestLEDSet(unittest.TestCase):
             numpy.array([26.974566726926,
                          38.514580968135,
                          17.386456455771,
-                         ]))
+                         ]),
+            decimal=12)
 
     def test_get_intensity_5(self):
         # Load
@@ -180,7 +184,8 @@ class TestLEDSet(unittest.TestCase):
                          33.700258347118,
                          5.0542024580729,
                          10.0080489941479,
-                         ]))
+                         ]),
+            decimal=12)
 
     def test_get_grayscale_1(self):
         # Load
@@ -389,3 +394,511 @@ class TestLEDSet(unittest.TestCase):
                                               gcal=gcal,
                                               row=row,
                                               col=col)
+
+    def test_discretize_intensity_1(self):
+        # Load
+        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        # Discretize intensities
+        int_disc = led_set.discretize_intensity(
+            intensity=20,
+            dc=4,
+            gcal=225)
+        # Test
+        int_exp = numpy.array([19.9988737859577,
+                               20.0022665682562,
+                               19.9992486210503,
+                               19.9973835015215,
+                               20.0025717022690,
+                               20.0028846184422,
+                               20.0003935963103,
+                               20.0029576503832,
+                               19.9976519690605,
+                               19.9994398778813,
+                               19.9990223919672,
+                               19.9973548291876,
+                               20.0003372812185,
+                               19.9986504952481,
+                               19.9978303492213,
+                               19.9991115189533,
+                               19.9987215210283,
+                               20.0003299935862,
+                               20.0029029411629,
+                               19.9986777517542,
+                               20.0004169292702,
+                               19.9977550642956,
+                               19.9970208184453,
+                               20.0001907697174,
+                               ])
+        numpy.testing.assert_almost_equal(int_disc, int_exp, decimal=12)
+
+    def test_discretize_intensity_2(self):
+        # Load
+        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        # Discretize intensities
+        intensity_target = numpy.array([14.8,
+                                        18,
+                                        14.5,
+                                        7.9,
+                                        12.4,
+                                        16.1,
+                                        20.2,
+                                        16.3,
+                                        21.2,
+                                        12.6,
+                                        14.2,
+                                        22,
+                                        22.5,
+                                        21.3,
+                                        8.1,
+                                        8,
+                                        21.1,
+                                        13.1,
+                                        17.7,
+                                        9.3,
+                                        15,
+                                        7.4,
+                                        8.4,
+                                        9.2,
+            ])
+        dc_target = numpy.array([8,
+                                 5,
+                                 7,
+                                 4,
+                                 7,
+                                 5,
+                                 5,
+                                 8,
+                                 8,
+                                 5,
+                                 6,
+                                 6,
+                                 5,
+                                 7,
+                                 6,
+                                 6,
+                                 5,
+                                 7,
+                                 5,
+                                 7,
+                                 6,
+                                 7,
+                                 6,
+                                 8,
+            ])
+        gcal_target = numpy.array([227,
+                                   207,
+                                   215,
+                                   222,
+                                   223,
+                                   223,
+                                   227,
+                                   215,
+                                   201,
+                                   225,
+                                   210,
+                                   227,
+                                   208,
+                                   216,
+                                   207,
+                                   224,
+                                   228,
+                                   206,
+                                   217,
+                                   228,
+                                   230,
+                                   219,
+                                   216,
+                                   220,
+            ])
+        int_disc = led_set.discretize_intensity(
+            intensity=intensity_target,
+            dc=dc_target,
+            gcal=gcal_target)
+        # Test
+        int_exp = numpy.array([14.7966018846390,
+                               18.0011351044386,
+                               14.5008721812934,
+                               7.8982436861070,
+                               12.4043832534167,
+                               16.0989385931911,
+                               20.1978210885207,
+                               16.2976325375828,
+                               21.2034989864704,
+                               12.6031973194933,
+                               14.2037766186526,
+                               22.0020121416865,
+                               22.4968332822784,
+                               21.3024352270248,
+                               8.0967947185002,
+                               7.9968717671627,
+                               21.0984224318832,
+                               13.1005694143085,
+                               17.6967844866966,
+                               9.2983150707383,
+                               14.9992464733110,
+                               7.3979923428851,
+                               8.3965227302978,
+                               9.1963078403059,
+                               ])
+        numpy.testing.assert_almost_equal(int_disc, int_exp, decimal=12)
+
+    def test_discretize_intensity_3(self):
+        # Load
+        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        # Discretize intensities
+        intensity_target = numpy.array([16.3, 14.5, 21.3, 21.1])
+        dc_target = numpy.array([8, 7, 7, 5])
+        gcal_target = numpy.array([215, 215, 216, 228])
+        row = numpy.array([1, 0, 2, 2])
+        col = numpy.array([1, 2, 1, 4])
+        int_disc = led_set.discretize_intensity(
+            intensity=intensity_target,
+            dc=dc_target,
+            gcal=gcal_target,
+            row=row,
+            col=col)
+        # Test
+        int_exp = numpy.array([16.2976325375828,
+                               14.5008721812934,
+                               21.3024352270248,
+                               21.0984224318832,
+                               ])
+        numpy.testing.assert_almost_equal(int_disc, int_exp, decimal=12)
+
+    def test_optimize_dc_1(self):
+        # Load
+        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        # Obtain optimal dc values
+        dc_opt = led_set.optimize_dc(intensity=24,
+                                     gcal=225,
+                                     )
+        # Test
+        numpy.testing.assert_array_equal(
+            dc_opt,
+            numpy.array([4,
+                         4,
+                         4,
+                         4,
+                         4,
+                         5,
+                         4,
+                         4,
+                         5,
+                         4,
+                         4,
+                         5,
+                         4,
+                         4,
+                         5,
+                         5,
+                         4,
+                         4,
+                         4,
+                         4,
+                         5,
+                         4,
+                         4,
+                         5,
+                         ], dtype=int))
+
+    def test_optimize_dc_2(self):
+        # Load
+        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        # Obtain optimal dc values
+        dc_opt = led_set.optimize_dc(intensity=24,
+                                     gcal=225,
+                                     uniform=True)
+        # Test
+        numpy.testing.assert_array_equal(dc_opt, 5)
+
+    def test_optimize_dc_3(self):
+        # Load
+        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        # Obtain optimal dc values
+        dc_opt = led_set.optimize_dc(intensity=24,
+                                     gcal=225,
+                                     min_dc=6)
+        # Test
+        numpy.testing.assert_array_equal(dc_opt, 6)
+
+    def test_optimize_dc_4(self):
+        # Load
+        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        # Obtain optimal dc values
+        intensity = numpy.array([13.6,
+                                 32.7,
+                                 26.7,
+                                 32.9,
+                                 35.2,
+                                 33.5,
+                                 10.5,
+                                 28.3,
+                                 12.6,
+                                 23,
+                                 38.9,
+                                 20.6,
+                                 39.2,
+                                 18.4,
+                                 13.1,
+                                 25.1,
+                                 39,
+                                 16.3,
+                                 16.7,
+                                 34.8,
+                                 38.9,
+                                 20.7,
+                                 26.3,
+                                 11.5,
+                                 ])
+        gcal = numpy.array([227,
+                            207,
+                            215,
+                            222,
+                            223,
+                            223,
+                            227,
+                            215,
+                            201,
+                            225,
+                            210,
+                            227,
+                            208,
+                            216,
+                            207,
+                            224,
+                            228,
+                            206,
+                            217,
+                            228,
+                            230,
+                            219,
+                            216,
+                            220,
+                            ], dtype=int)
+        dc_opt = led_set.optimize_dc(intensity=intensity,
+                                     gcal=gcal)
+        # Test
+        numpy.testing.assert_array_equal(
+            dc_opt,
+            numpy.array([3,
+                         6,
+                         5,
+                         6,
+                         6,
+                         6,
+                         2,
+                         5,
+                         3,
+                         4,
+                         7,
+                         4,
+                         8,
+                         4,
+                         3,
+                         5,
+                         7,
+                         3,
+                         3,
+                         6,
+                         7,
+                         4,
+                         5,
+                         3,
+                         ], dtype=int))
+
+    def test_optimize_dc_5(self):
+        # Load
+        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        # Obtain optimal dc values
+        intensity = numpy.array([13.6,
+                                 32.7,
+                                 26.7,
+                                 32.9,
+                                 35.2,
+                                 33.5,
+                                 10.5,
+                                 28.3,
+                                 12.6,
+                                 23,
+                                 38.9,
+                                 20.6,
+                                 39.2,
+                                 18.4,
+                                 13.1,
+                                 25.1,
+                                 39,
+                                 16.3,
+                                 16.7,
+                                 34.8,
+                                 38.9,
+                                 20.7,
+                                 26.3,
+                                 11.5,
+                                 ])
+        gcal = numpy.array([227,
+                            207,
+                            215,
+                            222,
+                            223,
+                            223,
+                            227,
+                            215,
+                            201,
+                            225,
+                            210,
+                            227,
+                            208,
+                            216,
+                            207,
+                            224,
+                            228,
+                            206,
+                            217,
+                            228,
+                            230,
+                            219,
+                            216,
+                            220,
+                            ], dtype=int)
+        dc_opt = led_set.optimize_dc(intensity=intensity,
+                                     gcal=gcal,
+                                     min_dc=4)
+        # Test
+        numpy.testing.assert_array_equal(
+            dc_opt,
+            numpy.array([4,
+                         6,
+                         5,
+                         6,
+                         6,
+                         6,
+                         4,
+                         5,
+                         4,
+                         4,
+                         7,
+                         4,
+                         8,
+                         4,
+                         4,
+                         5,
+                         7,
+                         4,
+                         4,
+                         6,
+                         7,
+                         4,
+                         5,
+                         4,
+                         ], dtype=int))
+
+    def test_optimize_dc_6(self):
+        # Load
+        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        # Obtain optimal dc values
+        intensity = numpy.array([13.6,
+                                 32.7,
+                                 26.7,
+                                 32.9,
+                                 35.2,
+                                 33.5,
+                                 10.5,
+                                 28.3,
+                                 12.6,
+                                 23,
+                                 38.9,
+                                 20.6,
+                                 39.2,
+                                 18.4,
+                                 13.1,
+                                 25.1,
+                                 39,
+                                 16.3,
+                                 16.7,
+                                 34.8,
+                                 38.9,
+                                 20.7,
+                                 26.3,
+                                 11.5,
+                                 ])
+        gcal = numpy.array([227,
+                            207,
+                            215,
+                            222,
+                            223,
+                            223,
+                            227,
+                            215,
+                            201,
+                            225,
+                            210,
+                            227,
+                            208,
+                            216,
+                            207,
+                            224,
+                            228,
+                            206,
+                            217,
+                            228,
+                            230,
+                            219,
+                            216,
+                            220,
+                            ], dtype=int)
+        dc_opt = led_set.optimize_dc(intensity=intensity,
+                                     gcal=gcal,
+                                     uniform=True)
+        # Test
+        numpy.testing.assert_array_equal(dc_opt, 8)
+
+    def test_optimize_dc_7(self):
+        # Load
+        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        # Obtain optimal dc values
+        intensity = numpy.array([26.7, 38.9, 26.3, 12.6])
+        gcal = numpy.array([215, 210, 216, 201], dtype=int)
+        row = numpy.array([0, 1, 3, 1], dtype=int)
+        col = numpy.array([2, 4, 4, 2], dtype=int)
+        dc_opt = led_set.optimize_dc(intensity=intensity,
+                                     gcal=gcal,
+                                     row=row,
+                                     col=col)
+        # Test
+        numpy.testing.assert_array_equal(
+            dc_opt,
+            numpy.array([5, 7, 5, 3], dtype=int))
+
+    def test_optimize_dc_8(self):
+        # Load
+        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        # Obtain optimal dc values
+        intensity = numpy.array([26.7, 38.9, 26.3, 12.6])
+        gcal = numpy.array([215, 210, 216, 201], dtype=int)
+        row = numpy.array([0, 1, 3, 1], dtype=int)
+        col = numpy.array([2, 4, 4, 2], dtype=int)
+        dc_opt = led_set.optimize_dc(intensity=intensity,
+                                     gcal=gcal,
+                                     row=row,
+                                     col=col,
+                                     min_dc=4)
+        # Test
+        numpy.testing.assert_array_equal(
+            dc_opt,
+            numpy.array([5, 7, 5, 4], dtype=int))
+
+    def test_optimize_dc_9(self):
+        # Load
+        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        # Obtain optimal dc values
+        intensity = numpy.array([26.7, 38.9, 26.3, 12.6])
+        gcal = numpy.array([215, 210, 216, 201], dtype=int)
+        row = numpy.array([0, 1, 3, 1], dtype=int)
+        col = numpy.array([2, 4, 4, 2], dtype=int)
+        dc_opt = led_set.optimize_dc(intensity=intensity,
+                                     gcal=gcal,
+                                     row=row,
+                                     col=col,
+                                     uniform=True)
+        # Test
+        numpy.testing.assert_array_equal(dc_opt, 7)
