@@ -3,3 +3,6 @@ dist
 LPA_Design.egg-info
 *.pyc
 *.ipynb_checkpoints
+example/Jennie/*
+example/channel_0.png
+example/channel_1.png

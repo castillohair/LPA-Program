@@ -14,6 +14,7 @@ import struct
 
 import numpy
 import pandas
+from matplotlib import pyplot
 
 LED_DATA_PATH = ""
 
@@ -1018,5 +1019,70 @@ class LPA(object):
         dc.resize(self.n_rows, self.n_cols)
         self.dc[:, :, channel] = dc
 
-    def plot_intensity(self, channel, file_name=None):
-        pass
+    def plot_intensity(self,
+                       channel,
+                       file_name=None,
+                       xunits='s',
+                       ylim=(0.1, 200),
+                       yscale='log',
+                       figsize=(12, 8)):
+        """
+        Plot the light intensity for each well in the LPA.
+
+        This function creates a ``n_rows x n_cols`` array of subplots, each
+        one of which will contain the intensities in time of each well, for
+        the specified channel.
+
+        Parameters
+        ----------
+        channel : int
+            Channel from which to make the plot.
+        file_name : str, optional
+            Name of the file to save the figure to. If None, don't save.
+        xunits : {'step', 'ms', 's', 'min'}, optional
+            Units to use for the x axis. This can be either the raw step
+            number, miliseconds, seconds, or minutes.
+        ylim : tuple, optional
+            Limit for the y axis.
+        yscale : {'linear', 'log'}, optional
+            Scale for the y axis.
+        figsize : tuple, optional
+            Size of the figure to make.
+
+        """
+        pyplot.figure(figsize=figsize)
+        for row in range(self.n_rows):
+            for col in range(self.n_cols):
+                # Subplot position should match well position in plate
+                pyplot.subplot(self.n_rows,
+                               self.n_cols,
+                               row*self.n_cols + col + 1)
+                # Calculate x axis data based on units
+                if xunits=='step':
+                    time = numpy.arange(self.intensity.shape[0])
+                elif xunits=='ms':
+                    time = numpy.arange(self.intensity.shape[0]) * \
+                        self.step_size
+                elif xunits=='s':
+                    time = numpy.arange(self.intensity.shape[0]) * \
+                        self.step_size/1000.
+                elif xunits=='min':
+                    time = numpy.arange(self.intensity.shape[0]) * \
+                        self.step_size/60000.
+                else:
+                    raise ValueError('units for x axis not recognized')
+                # Plot
+                pyplot.step(time,
+                            self.intensity[:, row, col, channel])
+                # Set labels, scales, lims
+                pyplot.xlim(time[0], time[-1])
+                pyplot.xlabel('Time ({})'.format(xunits))
+                pyplot.ylim(ylim)
+                pyplot.yscale(yscale)
+                pyplot.ylabel('Intensity (umol/m2/s)')
+
+        # Save if necessary
+        if file_name is not None:
+            pyplot.tight_layout()
+            pyplot.savefig(file_name, dpi=200)
+            pyplot.close()
