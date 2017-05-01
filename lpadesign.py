@@ -521,6 +521,36 @@ class LPA(object):
 
     Methods
     -------
+    set_all_dc
+        Set all dc values for a specific channel or for all of them.
+    set_all_gcal
+        Set all gcal values for a specific channel or for all of them.
+    set_n_steps
+        Resize the intensity array to a specific number of time steps.
+    load_dc
+        Load dc values from a tab-separated text file.
+    load_gcal
+        Load gcal values from a tab-separated text file.
+    load_lpf
+        Load intensity values from a binary .lpf file.
+    load_files
+        Load a set of dc, gcal, and lpf files in a specified folder.
+    save_dc
+        Save dc values in a tab-separated text file.
+    save_gcal
+        Save gcal values in a tab-separated text file.
+    save_lpf
+        Save grayscale values in a binary .lpf file.
+    save_files
+        Save dc, gcal, and .lpf files from the contents of this object.
+    set_timecourse_staggered
+        Set an intensity timecourse on many wells, with staggered delays.
+    discretize_intensity
+        Discretize the values in the intensity array.
+    optimize_dc
+        Get the lowest dc value so that a specified intensity is possible.
+    plot_intensity
+        Plot the light intensity for each well in the LPA.
 
     """
     def __init__(self,
