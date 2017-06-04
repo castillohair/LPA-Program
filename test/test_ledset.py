@@ -16,8 +16,8 @@ class TestLEDSet(unittest.TestCase):
 
     """
     def setUp(self):
-        self.file_name = "test/test_lpa_files/led-archives/EO_10/Tiffani_c1/"+ \
-            "EO_10_Tiffani_c1.xlsx"
+        self.file_name = "test/test_lpa_files/led-calibration/EO_10/"+ \
+            "Tiffani_c1/EO_10_Tiffani_c1.xlsx"
 
     def test_create_ledset(self):
         # Load

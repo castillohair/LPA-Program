@@ -1,7 +1,7 @@
 import numpy
 import lpaprogram
 
-lpaprogram.LED_DATA_PATH = "../test/test_lpa_files/led-archives"
+lpaprogram.LED_CALIBRATION_PATH = "../test/test_lpa_files/led-calibration"
 
 if __name__ == "__main__":
     # Load LPAs

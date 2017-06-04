@@ -19,7 +19,7 @@ class TestLPA(unittest.TestCase):
 
     """
     def setUp(self):
-        lpaprogram.LED_DATA_PATH = "test/test_lpa_files/led-archives"
+        lpaprogram.LED_CALIBRATION_PATH = "test/test_lpa_files/led-calibration"
         # Contents of LPA files in test_lpa_files/Jennie
         self.folder_to_load = 'test/test_lpa_files/Jennie'
         self.dc_file_to_load = os.path.join(self.folder_to_load, 'dc.txt')
