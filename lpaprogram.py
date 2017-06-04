@@ -1,5 +1,5 @@
 """
-Tools for designing LPA experiments.
+Generate programs for a Light Plate Apparatus (LPA).
 
 """
 

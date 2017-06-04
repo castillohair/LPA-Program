@@ -32,12 +32,12 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
-    name='LPA-Design',
+    name='LPA-Program',
 
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version=find_version(path.join(here, 'lpadesign.py')),
+    version=find_version(path.join(here, 'lpaprogram.py')),
 
     description='Tools for designing LPA experiments',
     long_description=long_description,
@@ -79,7 +79,7 @@ setup(
     # simple. Or you can use find_packages().
     # packages=['platedesign'],
     # Module names
-    py_modules=["lpadesign"],
+    py_modules=["lpaprogram"],
 
     # List run-time dependencies here.  These will be installed by pip when
     # your project is installed. For an analysis of "install_requires" vs pip's

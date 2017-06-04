@@ -11,7 +11,7 @@ import unittest
 import numpy
 import pandas
 
-import lpadesign
+import lpaprogram
 
 class TestLPF(unittest.TestCase):
     """
@@ -63,10 +63,10 @@ class TestLPF(unittest.TestCase):
             shutil.rmtree(self.temp_dir)
 
     def test_create(self):
-        lpf = lpadesign.LPF()
+        lpf = lpaprogram.LPF()
 
     def test_create_and_load(self):
-        lpf = lpadesign.LPF(self.file_name)
+        lpf = lpaprogram.LPF(self.file_name)
         # Check header info
         self.assertEqual(lpf.file_version, self.file_version_expected)
         self.assertEqual(lpf.n_channels, self.n_channels_expected)
@@ -78,7 +78,7 @@ class TestLPF(unittest.TestCase):
         numpy.testing.assert_array_equal(lpf.grayscale, self.gs_expected)
 
     def test_create_then_load(self):
-        lpf = lpadesign.LPF()
+        lpf = lpaprogram.LPF()
         lpf.load(self.file_name)
         # Check header info
         self.assertEqual(lpf.file_version, self.file_version_expected)
@@ -92,7 +92,7 @@ class TestLPF(unittest.TestCase):
 
     def test_save(self):
         # Create LPF object
-        lpf = lpadesign.LPF()
+        lpf = lpaprogram.LPF()
         lpf.file_version = self.file_version_expected
         lpf.n_channels = self.n_channels_expected
         lpf.step_size = self.step_size_expected

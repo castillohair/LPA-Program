@@ -1,6 +1,6 @@
 build
 dist
-LPA_Design.egg-info
+LPA_Program.egg-info
 *.pyc
 *.ipynb_checkpoints
 example/Jennie/*
