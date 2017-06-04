@@ -11,7 +11,7 @@ import unittest
 import numpy
 import pandas
 
-import lpadesign
+import lpaprogram
 
 class TestLPA(unittest.TestCase):
     """
@@ -19,7 +19,7 @@ class TestLPA(unittest.TestCase):
 
     """
     def setUp(self):
-        lpadesign.LED_DATA_PATH = "test/test_lpa_files/led-archives"
+        lpaprogram.LED_CALIBRATION_PATH = "test/test_lpa_files/led-calibration"
         # Contents of LPA files in test_lpa_files/Jennie
         self.folder_to_load = 'test/test_lpa_files/Jennie'
         self.dc_file_to_load = os.path.join(self.folder_to_load, 'dc.txt')
@@ -511,25 +511,25 @@ class TestLPA(unittest.TestCase):
             shutil.rmtree(self.temp_dir)
 
     def test_create_lpa_led_set(self):
-        lpa = lpadesign.LPA(name='Jennie', led_set_names=['EO_12', 'EO_20'])
+        lpa = lpaprogram.LPA(name='Jennie', led_set_names=['EO_12', 'EO_20'])
         self.assertEqual(lpa.n_channels, 2)
         self.assertEqual(lpa.n_rows, 4)
         self.assertEqual(lpa.n_cols, 6)
-        self.assertIsInstance(lpa.led_sets[0], lpadesign.LEDSet)
-        self.assertIsInstance(lpa.led_sets[1], lpadesign.LEDSet)
+        self.assertIsInstance(lpa.led_sets[0], lpaprogram.LEDSet)
+        self.assertIsInstance(lpa.led_sets[1], lpaprogram.LEDSet)
 
     def test_create_lpa_layout(self):
-        lpa = lpadesign.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
         self.assertEqual(lpa.n_channels, 2)
         self.assertEqual(lpa.n_rows, 4)
         self.assertEqual(lpa.n_cols, 6)
-        self.assertIsInstance(lpa.led_sets[0], lpadesign.LEDSet)
-        self.assertIsInstance(lpa.led_sets[1], lpadesign.LEDSet)
+        self.assertIsInstance(lpa.led_sets[0], lpaprogram.LEDSet)
+        self.assertIsInstance(lpa.led_sets[1], lpaprogram.LEDSet)
         self.assertEqual(lpa.led_sets[0].name, 'EO_12')
         self.assertEqual(lpa.led_sets[1].name, 'EO_20')
 
     def test_set_all_dc_all(self):
-        lpa = lpadesign.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
         # Check initial size
         self.assertEqual(lpa.dc.shape, (4, 6, 2))
         # Change all and check
@@ -542,7 +542,7 @@ class TestLPA(unittest.TestCase):
         numpy.testing.assert_array_equal(lpa.dc, 3)
 
     def test_set_all_dc_ch1(self):
-        lpa = lpadesign.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
         # Check initial size
         self.assertEqual(lpa.dc.shape, (4, 6, 2))
         # Change all and check
@@ -556,7 +556,7 @@ class TestLPA(unittest.TestCase):
         numpy.testing.assert_array_equal(lpa.dc[:,:,1], 0)
 
     def test_set_all_dc_ch2(self):
-        lpa = lpadesign.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
         # Check initial size
         self.assertEqual(lpa.dc.shape, (4, 6, 2))
         # Change all and check
@@ -570,7 +570,7 @@ class TestLPA(unittest.TestCase):
         numpy.testing.assert_array_equal(lpa.dc[:,:,1], 3)
 
     def test_set_all_gcal_all(self):
-        lpa = lpadesign.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
         # Check initial size
         self.assertEqual(lpa.gcal.shape, (4, 6, 2))
         # Change all and check
@@ -583,7 +583,7 @@ class TestLPA(unittest.TestCase):
         numpy.testing.assert_array_equal(lpa.gcal, 100)
 
     def test_set_all_gcal_ch1(self):
-        lpa = lpadesign.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
         # Check initial size
         self.assertEqual(lpa.gcal.shape, (4, 6, 2))
         # Change all and check
@@ -597,7 +597,7 @@ class TestLPA(unittest.TestCase):
         numpy.testing.assert_array_equal(lpa.gcal[:,:,1], 0)
 
     def test_set_all_gcal_ch2(self):
-        lpa = lpadesign.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
         # Check initial size
         self.assertEqual(lpa.gcal.shape, (4, 6, 2))
         # Change all and check
@@ -611,7 +611,7 @@ class TestLPA(unittest.TestCase):
         numpy.testing.assert_array_equal(lpa.gcal[:,:,1], 100)
 
     def test_set_n_steps_1(self):
-        lpa = lpadesign.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
         # Check initial size
         self.assertEqual(lpa.intensity.shape, (1, 4, 6, 2))
         # Set all, increase size, and check
@@ -636,21 +636,21 @@ class TestLPA(unittest.TestCase):
 
     def test_load_dc(self):
         # Create object and attempt to load
-        lpa = lpadesign.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
         lpa.load_dc(self.dc_file_to_load)
         # Test
         numpy.testing.assert_array_equal(lpa.dc, self.dc_to_load_exp)
 
     def test_load_gcal(self):
         # Create object and attempt to load
-        lpa = lpadesign.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
         lpa.load_gcal(self.gcal_file_to_load)
         # Test
         numpy.testing.assert_array_equal(lpa.gcal, self.gcal_to_load_exp)
 
     def test_load_lpf(self):
         # Create object
-        lpa = lpadesign.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
         lpa.dc = self.dc_to_load_exp
         lpa.gcal = self.gcal_to_load_exp
         # Initialize a different step size
@@ -667,7 +667,7 @@ class TestLPA(unittest.TestCase):
 
     def test_load_files(self):
         # Create object and attempt to load
-        lpa = lpadesign.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
         lpa.load_files(self.folder_to_load)
         # Test dot correction and gcal_expected+
         numpy.testing.assert_array_equal(lpa.dc, self.dc_to_load_exp)
@@ -682,7 +682,7 @@ class TestLPA(unittest.TestCase):
 
     def test_save_dc(self):
         # Create object and attempt to save
-        lpa = lpadesign.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
         lpa.dc = self.dc_to_save
         lpa.save_dc(os.path.join(self.temp_dir, 'dc.txt'))
         # Load file and compare contents
@@ -692,7 +692,7 @@ class TestLPA(unittest.TestCase):
 
     def test_save_gcal(self):
         # Create object and attempt to save
-        lpa = lpadesign.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
         lpa.gcal = self.gcal_to_save
         lpa.save_gcal(os.path.join(self.temp_dir, 'gcal.txt'))
         # Load file and compare contents
@@ -702,7 +702,7 @@ class TestLPA(unittest.TestCase):
 
     def test_save_lpf(self):
         # Create object
-        lpa = lpadesign.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
         lpa.dc = self.dc_to_save
         lpa.gcal = self.gcal_to_save
         lpa.intensity = self.intensity_to_save
@@ -711,7 +711,7 @@ class TestLPA(unittest.TestCase):
         lpa.save_lpf(os.path.join(self.temp_dir, 'program.lpf'))
         # Load file and compare with expected contents
         lpf_file_name = os.path.join(self.temp_dir, 'program.lpf')
-        lpf = lpadesign.LPF(lpf_file_name)
+        lpf = lpaprogram.LPF(lpf_file_name)
         self.assertEqual(lpf.file_version, self.file_version_to_save_exp)
         self.assertEqual(lpf.n_channels, self.n_channels_to_save_exp)
         self.assertEqual(lpf.step_size, self.step_size_to_save_exp)
@@ -720,7 +720,7 @@ class TestLPA(unittest.TestCase):
 
     def test_save_files(self):
         # Create object
-        lpa = lpadesign.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
         lpa.dc = self.dc_to_save
         lpa.gcal = self.gcal_to_save
         lpa.intensity = self.intensity_to_save
@@ -739,7 +739,7 @@ class TestLPA(unittest.TestCase):
         self.assertEqual(file_contents, self.gcal_to_save_exp)
 
         lpf_file_name = os.path.join(self.temp_dir, 'Jennie', 'program.lpf')
-        lpf = lpadesign.LPF(lpf_file_name)
+        lpf = lpaprogram.LPF(lpf_file_name)
         self.assertEqual(lpf.file_version, self.file_version_to_save_exp)
         self.assertEqual(lpf.n_channels, self.n_channels_to_save_exp)
         self.assertEqual(lpf.step_size, self.step_size_to_save_exp)
@@ -748,7 +748,7 @@ class TestLPA(unittest.TestCase):
 
     def test_set_timecourse_staggered_1(self):
         # Create object
-        lpa = lpadesign.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
         # Set timecourse
         lpa.set_timecourse_staggered(
             intensity=self.timecourse_ch0,
@@ -769,7 +769,7 @@ class TestLPA(unittest.TestCase):
 
     def test_set_timecourse_staggered_2(self):
         # Create object
-        lpa = lpadesign.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
         # Set long experiment duration
         lpa.set_n_steps(720)
         # Set timecourse
@@ -791,7 +791,7 @@ class TestLPA(unittest.TestCase):
 
     def test_set_timecourse_staggered_3(self):
         # Create object
-        lpa = lpadesign.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
         # Set long experiment duration
         lpa.set_n_steps(720)
         # Set timecourse
@@ -822,7 +822,7 @@ class TestLPA(unittest.TestCase):
 
     def test_discretize_intensity(self):
         # Create object
-        lpa = lpadesign.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
         # Set dcs and gcals
         lpa.set_all_dc(8, channel=0)
         lpa.dc[3, 5, 0] = 9
@@ -851,7 +851,7 @@ class TestLPA(unittest.TestCase):
 
     def test_optimize_dc_1(self):
         # Create object
-        lpa = lpadesign.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
         # Set dcs and gcals
         lpa.set_all_dc(8, channel=0)
         lpa.set_all_gcal(225, channel=0)
@@ -869,7 +869,7 @@ class TestLPA(unittest.TestCase):
 
     def test_optimize_dc_2(self):
         # Create object
-        lpa = lpadesign.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
         # Set dcs and gcals
         lpa.set_all_dc(8, channel=0)
         lpa.set_all_gcal(225, channel=0)
@@ -888,7 +888,7 @@ class TestLPA(unittest.TestCase):
 
     def test_optimize_dc_3(self):
         # Create object
-        lpa = lpadesign.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
         # Set dcs and gcals
         lpa.set_all_dc(8, channel=0)
         lpa.set_all_gcal(225, channel=0)

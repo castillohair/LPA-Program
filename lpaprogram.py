@@ -1,12 +1,12 @@
 """
-Tools for designing LPA experiments.
+Generate programs for a Light Plate Apparatus (LPA).
 
 """
 
 # Versions should comply with PEP440. For a discussion on single-sourcing
 # the version across setup.py and the project code, see
 # https://packaging.python.org/en/latest/single_source_version.html
-__version__ = '1.0.0b1'
+__version__ = '1.0.0b2'
 
 import os
 import random
@@ -16,7 +16,7 @@ import numpy
 import pandas
 from matplotlib import pyplot
 
-LED_DATA_PATH = ""
+LED_CALIBRATION_PATH = ""
 
 class LPF(object):
     """
@@ -163,7 +163,7 @@ class LEDSet(object):
     """
     Object that represents an LED set.
 
-    Spectral measurements of this LED set in a specific LPA have been
+    Calibration measurements of this LED set in a specific LPA have been
     conducted with specific values of dot correction (dc) and grayscale
     calibration (gcal). These measurements should be saved into an Excel
     table that is loaded during the object's creation. These measurements
@@ -175,22 +175,22 @@ class LEDSet(object):
     name : str
         Name of LED set.
     file_name : str
-        Name of the Excel file in which spectral measurements are stored.
+        Name of the Excel file in which calibration measurements are stored.
 
     Attributes
     ----------
     name : str
         Name of LED set.
     lpa_name : str
-        Name of the LPA in which spectral measurements were conducted.
+        Name of the LPA in which calibration measurements were conducted.
     n_rows : int
         Number of rows in the LPA.
     n_cols : int
         Number of cols in the LPA.
     channel : int
         Channel of the LPA in which the LED set is located.
-    spectral_data : DataFrame
-        A table with the LED set spectral data.
+    calibration_data : DataFrame
+        A table with the LED set calibration data.
 
     Methods
     -------
@@ -203,15 +203,15 @@ class LEDSet(object):
     def __init__(self, name, file_name):
         # Store name
         self.name = name
-        # Load spectral data
-        self.spectral_data = pandas.read_excel(file_name,
-                                               'Sheet1',
-                                               index_col='Well')
+        # Load calibration data
+        self.calibration_data = pandas.read_excel(file_name,
+                                                  'Sheet1',
+                                                  index_col='Well')
         # Extract LPA information
-        self.lpa_name = self.spectral_data['LPA'].iloc[0]
-        self.n_rows = self.spectral_data['Row'].max()
-        self.n_cols = self.spectral_data['Col'].max()
-        channel = self.spectral_data['Channel'].iloc[0]
+        self.lpa_name = self.calibration_data['LPA'].iloc[0]
+        self.n_rows = self.calibration_data['Row'].max()
+        self.n_cols = self.calibration_data['Col'].max()
+        channel = self.calibration_data['Channel'].iloc[0]
         if channel in [1, 'c1', 'Top']:
             self.channel = 0
         elif channel in [2, 'c2', 'Bot', 'Bottom']:
@@ -219,12 +219,12 @@ class LEDSet(object):
         else:
             raise ValueError("channel not recognized")
         # Sanity checks
-        if not (self.spectral_data['LPA']==self.lpa_name).all():
-            raise ValueError("LPA name is not consistent in spectral data")
-        if not (self.spectral_data['Channel']==channel).all():
-            raise ValueError("channel is not consistent in spectral data")
-        if len(self.spectral_data) != (self.n_rows*self.n_cols):
-            raise ValueError("spectral data does not have the expected " + \
+        if not (self.calibration_data['LPA']==self.lpa_name).all():
+            raise ValueError("LPA name is not consistent in calibration data")
+        if not (self.calibration_data['Channel']==channel).all():
+            raise ValueError("channel is not consistent in calibration data")
+        if len(self.calibration_data) != (self.n_rows*self.n_cols):
+            raise ValueError("calibration data does not have the expected " + \
                 "dimensions")
 
     def get_intensity(self, gs, dc, gcal=255, row=None, col=None):
@@ -264,7 +264,7 @@ class LEDSet(object):
             col = numpy.atleast_1d(col)
             well = row*self.n_cols + col
         # Get info for relevant wells
-        led_data = self.spectral_data.loc[well + 1]
+        led_data = self.calibration_data.loc[well + 1]
         # Get intensity at measured conditions
         measured_dc = led_data['DC'].values.astype(float)
         measured_gcal = led_data['GS Cal'].values.astype(float)
@@ -322,7 +322,7 @@ class LEDSet(object):
             col = numpy.atleast_1d(col)
             well = row*self.n_cols + col
         # Get info for relevant wells
-        led_data = self.spectral_data.loc[well + 1]
+        led_data = self.calibration_data.loc[well + 1]
         # Get intensity at measured conditions
         measured_dc = led_data['DC'].values.astype(float)
         measured_gcal = led_data['GS Cal'].values.astype(float)
@@ -435,7 +435,7 @@ class LEDSet(object):
             col = numpy.atleast_1d(col)
             well = row*self.n_cols + col
         # Get info for relevant wells
-        led_data = self.spectral_data.loc[well + 1]
+        led_data = self.calibration_data.loc[well + 1]
         # Get intensity at measured conditions
         measured_dc = led_data['DC'].values.astype(float)
         measured_gcal = led_data['GS Cal'].values.astype(float)
@@ -471,8 +471,8 @@ class LPA(object):
     This object works with intensity values in umol/m^2/s, and uses LEDSet
     objects to convert these into grayscale values before saving LPA files.
     The names of the LED sets should be specified during the object's
-    creation. Spectral measurements of LED sets are assumed to be present
-    in the folder "{LED_DATA_PATH} / {led_set_name} / {lpa_name}_{channel}"
+    creation. Calibration data of LED sets are assumed to be present in the
+    folder "{LED_CALIBRATION_PATH} / {led_set_name} / {lpa_name}_{channel}"
     in a file named "{led_set_name}_{lpa_name}_{channel}.xlsx".
 
     Alternatively, LED layouts can be specified instead of LED set names.
@@ -480,9 +480,9 @@ class LPA(object):
     LED set calibrated against different LPAs. Layouts can have more
     generic and descriptive names (e.g. "660nm LEDs"), whereas each LED set
     calibrated against an LPA needs to have a unique name. To use layouts,
-     a file "led_archives.xlsx" should be present in ``LED_DATA_PATH``.
-    This file specifies the mapping from layout name and LPA name to the
-    appropriate LED set name.
+     a file "led_archives.xlsx" should be present in
+     ``LED_CALIBRATION_PATH``. This file specifies the mapping from layout
+    name and LPA name to the appropriate LED set name.
 
     Properties
     ----------
@@ -572,7 +572,7 @@ class LPA(object):
             if len(layout_names) > 2:
                 raise NotImplementedError("more than 2 channels not supported")
             # Load layout table
-            layout_table = pandas.read_excel(os.path.join(LED_DATA_PATH,
+            layout_table = pandas.read_excel(os.path.join(LED_CALIBRATION_PATH,
                                                           'led_archives.xlsx'))
             # Obtain led set names
             led_set_names = []
@@ -598,7 +598,7 @@ class LPA(object):
         self.led_sets = []
         for i, led_set_name in enumerate(led_set_names):
             file_name = os.path.join(
-                LED_DATA_PATH,
+                LED_CALIBRATION_PATH,
                 led_set_name,
                 "{}_c{}".format(name, i+1),
                 "{}_{}_c{}.xlsx".format(led_set_name, name, i+1))

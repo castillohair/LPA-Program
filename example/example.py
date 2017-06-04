@@ -1,11 +1,11 @@
 import numpy
-import lpadesign
+import lpaprogram
 
-lpadesign.LED_DATA_PATH = "../test/test_lpa_files/led-archives"
+lpaprogram.LED_CALIBRATION_PATH = "../test/test_lpa_files/led-calibration"
 
 if __name__ == "__main__":
     # Load LPAs
-    lpa = lpadesign.LPA(name='Jennie',  led_set_names=['EO_12', 'EO_20'])
+    lpa = lpaprogram.LPA(name='Jennie',  led_set_names=['EO_12', 'EO_20'])
     # Step size is one minute
     lpa.step_size = 60000
     # Exp time is 8 hours

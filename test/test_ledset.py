@@ -8,7 +8,7 @@ import unittest
 import numpy
 import pandas
 
-import lpadesign
+import lpaprogram
 
 class TestLEDSet(unittest.TestCase):
     """
@@ -16,12 +16,12 @@ class TestLEDSet(unittest.TestCase):
 
     """
     def setUp(self):
-        self.file_name = "test/test_lpa_files/led-archives/EO_10/Tiffani_c1/"+ \
-            "EO_10_Tiffani_c1.xlsx"
+        self.file_name = "test/test_lpa_files/led-calibration/EO_10/"+ \
+            "Tiffani_c1/EO_10_Tiffani_c1.xlsx"
 
     def test_create_ledset(self):
         # Load
-        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        led_set = lpaprogram.LEDSet(name='TestLEDSet', file_name=self.file_name)
         # Check attributes
         self.assertEqual(led_set.name, 'TestLEDSet')
         self.assertEqual(led_set.lpa_name, "Tiffani")
@@ -31,7 +31,7 @@ class TestLEDSet(unittest.TestCase):
 
     def test_get_intensity_1(self):
         # Load
-        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        led_set = lpaprogram.LEDSet(name='TestLEDSet', file_name=self.file_name)
         # Get intensities
         intensity = led_set.get_intensity(gs=1000., dc=8, gcal=215)
         # Test
@@ -67,7 +67,7 @@ class TestLEDSet(unittest.TestCase):
 
     def test_get_intensity_2(self):
         # Load
-        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        led_set = lpaprogram.LEDSet(name='TestLEDSet', file_name=self.file_name)
         # Get intensities
         gs = numpy.array([4075,
                           1523,
@@ -128,7 +128,7 @@ class TestLEDSet(unittest.TestCase):
 
     def test_get_intensity_3(self):
         # Load
-        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        led_set = lpaprogram.LEDSet(name='TestLEDSet', file_name=self.file_name)
         # Get intensities
         intensity = led_set.get_intensity(gs=50, dc=8, gcal=215, row=2, col=1)
         # Test
@@ -140,7 +140,7 @@ class TestLEDSet(unittest.TestCase):
 
     def test_get_intensity_4(self):
         # Load
-        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        led_set = lpaprogram.LEDSet(name='TestLEDSet', file_name=self.file_name)
         # Get intensities
         gs = numpy.array([2390, 3491, 1550])
         row = [0, 0, 3]
@@ -163,7 +163,7 @@ class TestLEDSet(unittest.TestCase):
 
     def test_get_intensity_5(self):
         # Load
-        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        led_set = lpaprogram.LEDSet(name='TestLEDSet', file_name=self.file_name)
         # Get intensities
         gs = numpy.array([2390, 3491, 1550, 1905])
         dc = numpy.array([8, 7, 4, 8])
@@ -189,7 +189,7 @@ class TestLEDSet(unittest.TestCase):
 
     def test_get_grayscale_1(self):
         # Load
-        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        led_set = lpaprogram.LEDSet(name='TestLEDSet', file_name=self.file_name)
         # Get grayscale values
         grayscale = led_set.get_grayscale(intensity=20., dc=6, gcal=199)
         # Test
@@ -224,7 +224,7 @@ class TestLEDSet(unittest.TestCase):
 
     def test_get_grayscale_2(self):
         # Load
-        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        led_set = lpaprogram.LEDSet(name='TestLEDSet', file_name=self.file_name)
         # Get grayscale values
         intensity = numpy.array([14.7705276,
                                  18.011532,
@@ -284,7 +284,7 @@ class TestLEDSet(unittest.TestCase):
 
     def test_get_grayscale_3(self):
         # Load
-        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        led_set = lpaprogram.LEDSet(name='TestLEDSet', file_name=self.file_name)
         # Get grayscale values
         grayscale = led_set.get_grayscale(intensity=7.92834328438,
                                           dc=6,
@@ -299,7 +299,7 @@ class TestLEDSet(unittest.TestCase):
 
     def test_get_grayscale_4(self):
         # Load
-        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        led_set = lpaprogram.LEDSet(name='TestLEDSet', file_name=self.file_name)
         # Get grayscale values
         intensity = numpy.array([7.92834328438,
                                  21.961121594,
@@ -323,7 +323,7 @@ class TestLEDSet(unittest.TestCase):
 
     def test_get_grayscale_5(self):
         # Load
-        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        led_set = lpaprogram.LEDSet(name='TestLEDSet', file_name=self.file_name)
         # Get grayscale values
         intensity = numpy.array([7.92834328438,
                                  21.961121594,
@@ -349,7 +349,7 @@ class TestLEDSet(unittest.TestCase):
 
     def test_get_grayscale_6(self):
         # Load
-        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        led_set = lpaprogram.LEDSet(name='TestLEDSet', file_name=self.file_name)
         # Get grayscale values
         intensity = numpy.array([7.92834328438,
                                  21.961121594,
@@ -377,7 +377,7 @@ class TestLEDSet(unittest.TestCase):
 
     def test_get_grayscale_error(self):
         # Load
-        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        led_set = lpaprogram.LEDSet(name='TestLEDSet', file_name=self.file_name)
         # Get grayscale values
         intensity = numpy.array([7.92834328438,
                                  21.961121594,
@@ -397,7 +397,7 @@ class TestLEDSet(unittest.TestCase):
 
     def test_discretize_intensity_1(self):
         # Load
-        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        led_set = lpaprogram.LEDSet(name='TestLEDSet', file_name=self.file_name)
         # Discretize intensities
         int_disc = led_set.discretize_intensity(
             intensity=20,
@@ -433,7 +433,7 @@ class TestLEDSet(unittest.TestCase):
 
     def test_discretize_intensity_2(self):
         # Load
-        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        led_set = lpaprogram.LEDSet(name='TestLEDSet', file_name=self.file_name)
         # Discretize intensities
         intensity_target = numpy.array([14.8,
                                         18,
@@ -544,7 +544,7 @@ class TestLEDSet(unittest.TestCase):
 
     def test_discretize_intensity_3(self):
         # Load
-        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        led_set = lpaprogram.LEDSet(name='TestLEDSet', file_name=self.file_name)
         # Discretize intensities
         intensity_target = numpy.array([16.3, 14.5, 21.3, 21.1])
         dc_target = numpy.array([8, 7, 7, 5])
@@ -567,7 +567,7 @@ class TestLEDSet(unittest.TestCase):
 
     def test_optimize_dc_1(self):
         # Load
-        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        led_set = lpaprogram.LEDSet(name='TestLEDSet', file_name=self.file_name)
         # Obtain optimal dc values
         dc_opt = led_set.optimize_dc(intensity=24,
                                      gcal=225,
@@ -603,7 +603,7 @@ class TestLEDSet(unittest.TestCase):
 
     def test_optimize_dc_2(self):
         # Load
-        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        led_set = lpaprogram.LEDSet(name='TestLEDSet', file_name=self.file_name)
         # Obtain optimal dc values
         dc_opt = led_set.optimize_dc(intensity=24,
                                      gcal=225,
@@ -613,7 +613,7 @@ class TestLEDSet(unittest.TestCase):
 
     def test_optimize_dc_3(self):
         # Load
-        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        led_set = lpaprogram.LEDSet(name='TestLEDSet', file_name=self.file_name)
         # Obtain optimal dc values
         dc_opt = led_set.optimize_dc(intensity=24,
                                      gcal=225,
@@ -623,7 +623,7 @@ class TestLEDSet(unittest.TestCase):
 
     def test_optimize_dc_4(self):
         # Load
-        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        led_set = lpaprogram.LEDSet(name='TestLEDSet', file_name=self.file_name)
         # Obtain optimal dc values
         intensity = numpy.array([13.6,
                                  32.7,
@@ -708,7 +708,7 @@ class TestLEDSet(unittest.TestCase):
 
     def test_optimize_dc_5(self):
         # Load
-        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        led_set = lpaprogram.LEDSet(name='TestLEDSet', file_name=self.file_name)
         # Obtain optimal dc values
         intensity = numpy.array([13.6,
                                  32.7,
@@ -794,7 +794,7 @@ class TestLEDSet(unittest.TestCase):
 
     def test_optimize_dc_6(self):
         # Load
-        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        led_set = lpaprogram.LEDSet(name='TestLEDSet', file_name=self.file_name)
         # Obtain optimal dc values
         intensity = numpy.array([13.6,
                                  32.7,
@@ -854,7 +854,7 @@ class TestLEDSet(unittest.TestCase):
 
     def test_optimize_dc_7(self):
         # Load
-        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        led_set = lpaprogram.LEDSet(name='TestLEDSet', file_name=self.file_name)
         # Obtain optimal dc values
         intensity = numpy.array([26.7, 38.9, 26.3, 12.6])
         gcal = numpy.array([215, 210, 216, 201], dtype=int)
@@ -871,7 +871,7 @@ class TestLEDSet(unittest.TestCase):
 
     def test_optimize_dc_8(self):
         # Load
-        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        led_set = lpaprogram.LEDSet(name='TestLEDSet', file_name=self.file_name)
         # Obtain optimal dc values
         intensity = numpy.array([26.7, 38.9, 26.3, 12.6])
         gcal = numpy.array([215, 210, 216, 201], dtype=int)
@@ -889,7 +889,7 @@ class TestLEDSet(unittest.TestCase):
 
     def test_optimize_dc_9(self):
         # Load
-        led_set = lpadesign.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        led_set = lpaprogram.LEDSet(name='TestLEDSet', file_name=self.file_name)
         # Obtain optimal dc values
         intensity = numpy.array([26.7, 38.9, 26.3, 12.6])
         gcal = numpy.array([215, 210, 216, 201], dtype=int)
