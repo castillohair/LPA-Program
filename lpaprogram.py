@@ -613,14 +613,14 @@ class LPA(object):
         # Consistency checks on all led sets
         for led_set in self.led_sets:
             if self.name != led_set.lpa_name:
-                print "LPA name does not match for LED set {}".format(
-                    led_set.name)
+                raise ValueError("LPA name does not match for LED set {}"\
+                    .format(led_set.name))
             if self.n_rows != led_set.n_rows:
-                print "number of rows does not match for LED set {}".format(
-                    led_set.name)
+                raise ValueError("number of rows does not match for LED set {}"\
+                    .format(led_set.name))
             if self.n_cols != led_set.n_cols:
-                print "number of columns does not match for LED set {}".format(
-                    led_set.name)
+                raise ValueError("number of columns does not match for LED set "
+                    "{}".format(led_set.name))
 
         # Initialize step size in ms
         self.step_size = 1000
@@ -863,7 +863,6 @@ class LPA(object):
                         gcal=self.gcal[:,:,channel].flatten(),
                         )
                 except ValueError as e:
-                    print e.args
                     e.args = ("on step {}, channel {}: ".format(
                         step,
                         channel) + e.args[0],)
@@ -999,7 +998,6 @@ class LPA(object):
                         gcal=self.gcal[:,:,channel].flatten(),
                         )
                 except ValueError as e:
-                    print e.args
                     e.args = ("on step {}, channel {}: ".format(
                         step,
                         channel) + e.args[0],)
