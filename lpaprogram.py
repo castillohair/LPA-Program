@@ -1,3 +1,4 @@
+# -*- coding: UTF-8 -*-
 """
 Generate programs for a Light Plate Apparatus (LPA).
 
@@ -167,7 +168,7 @@ class LEDSet(object):
     conducted with specific values of dot correction (dc) and grayscale
     calibration (gcal). These measurements should be saved into an Excel
     table that is loaded during the object's creation. These measurements
-    are used to convert from light intensity values in umol/m^2/s into
+    are used to convert from light intensity values in µmol/(m^2*s) into
     grayscale values at the specified dc and gcal values, and viceversa.
 
     Parameters
@@ -195,9 +196,9 @@ class LEDSet(object):
     Methods
     -------
     get_intensity
-        Calculate intensity in umol/m^2/s from grayscale values.
+        Calculate intensity in µmol/(m^2*s) from grayscale values.
     get_grayscale
-        Calculate grayscale values from intensity values in umol/m^2/s.
+        Calculate grayscale values from intensity values in µmol/(m^2*s).
 
     """
     def __init__(self, name, file_name):
@@ -229,7 +230,7 @@ class LEDSet(object):
 
     def get_intensity(self, gs, dc, gcal=255, row=None, col=None):
         """
-        Calculate intensity in umol/m^2/s from grayscale values.
+        Calculate intensity in µmol/(m^2*s) from grayscale values.
 
         Parameters can be arrays or single numbers, and these can be mixed.
         All arrays should have the same dimensions. If either ``row`` or
@@ -252,7 +253,7 @@ class LEDSet(object):
         Returns
         -------
         array
-            The intensities of each well in umol/m^2/s.
+            The intensities of each well in µmol/(m^2*s).
 
         """
         # If row is None, use all wells
@@ -296,7 +297,7 @@ class LEDSet(object):
         Parameters
         ----------
         intensity : array
-            The intensities of each well in umol/m^2/s.
+            The intensities of each well in µmol/(m^2*s).
         dc : array
             Dot-correction values.
         gcal : array, optional
@@ -356,7 +357,7 @@ class LEDSet(object):
         Parameters
         ----------
         intensity : array
-            The intensities of each well in umol/m^2/s.
+            The intensities of each well in µmol/(m^2*s).
         dc : array
             Dot-correction values.
         gcal : array, optional
@@ -408,7 +409,7 @@ class LEDSet(object):
         Parameters
         ----------
         intensity : array
-            The intensities of each well in umol/m^2/s.
+            The intensities of each well in µmol/(m^2*s).
         gcal : array, optional
             Grayscale calibration values.
         min_dc : array, optional
@@ -468,12 +469,13 @@ class LPA(object):
     calibration values of an LPA, and can convert these from/into the text/
     binary files that are directly used by an LPA.
 
-    This object works with intensity values in umol/m^2/s, and uses LEDSet
-    objects to convert these into grayscale values before saving LPA files.
-    The names of the LED sets should be specified during the object's
-    creation. Calibration data of LED sets are assumed to be present in the
-    folder "{LED_CALIBRATION_PATH} / {led_set_name} / {lpa_name}_{channel}"
-    in a file named "{led_set_name}_{lpa_name}_{channel}.xlsx".
+    This object works with intensity values in µmol/(m^2*s), and uses
+    LEDSet objects to convert these into grayscale values before saving LPA
+    files. The names of the LED sets should be specified during the
+    object's creation. Calibration data of LED sets are assumed to be
+    present in the folder "{LED_CALIBRATION_PATH} / {led_set_name} /
+    {lpa_name}_{channel}" in a file named
+    "{led_set_name}_{lpa_name}_{channel}.xlsx".
 
     Alternatively, LED layouts can be specified instead of LED set names.
     A layout is a group of LED sets that use similar LEDs, but with each
@@ -517,7 +519,7 @@ class LPA(object):
         calibration values.
     intensity : array
         Array of size (n_steps, n_rows, n_cols, n_channels) with light
-        intensity values for each LED, in umol/m^2/s.
+        intensity values for each LED, in µmol/(m^2*s).
 
     Methods
     -------
@@ -1107,7 +1109,7 @@ class LPA(object):
                 pyplot.xlabel('Time ({})'.format(xunits))
                 pyplot.ylim(ylim)
                 pyplot.yscale(yscale)
-                pyplot.ylabel('Intensity (umol/m2/s)')
+                pyplot.ylabel(u'Intensity ($µmol/(m^2 \cdot s)$)')
 
         # Save if necessary
         if file_name is not None:
