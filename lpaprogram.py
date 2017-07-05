@@ -465,37 +465,41 @@ class LPA(object):
     """
     Object that represents an LPA with associated LED sets.
 
-    This object manages the intensity, dot correction, and grayscale
-    calibration values of an LPA, and can convert these from/into the text/
-    binary files that are directly used by an LPA.
+    This object allows the user to specify light intensity in µmol/(m^2*s)
+    for each LED in an LPA at every time step, and generates the text and
+    binary files used by an LPA. The user can also direclty manipulate dot
+    correction and grayscale calibration values. In addition, light
+    intensities can be read from LPA files using this object.
 
-    This object works with intensity values in µmol/(m^2*s), and uses
-    LEDSet objects to convert these into grayscale values before saving LPA
-    files. The names of the LED sets should be specified during the
-    object's creation. Calibration data of LED sets are assumed to be
+    To convert light intensities to raw grayscale values and viceversa,
+    this object uses LEDSet objects. The names of these should be specified
+    either during the object's creation or later using the function
+    `load_led_sets()`. Calibration data of LED sets are assumed to be
     present in the folder "{LED_CALIBRATION_PATH} / {led_set_name} /
     {lpa_name}_{channel}" in a file named
-    "{led_set_name}_{lpa_name}_{channel}.xlsx".
-
-    Alternatively, LED layouts can be specified instead of LED set names.
-    A layout is a group of LED sets that use similar LEDs, but with each
-    LED set calibrated against different LPAs. Layouts can have more
-    generic and descriptive names (e.g. "660nm LEDs"), whereas each LED set
-    calibrated against an LPA needs to have a unique name. To use layouts,
-     a file "led_archives.xlsx" should be present in
-     ``LED_CALIBRATION_PATH``. This file specifies the mapping from layout
-    name and LPA name to the appropriate LED set name.
+    "{led_set_name}_{lpa_name}_{channel}.xlsx". Alternatively, LED layouts
+    can be specified instead of LED set names. A layout is a group of LED
+    sets that use similar LEDs, but with each LED set calibrated against
+    different LPAs. Layouts can have more generic and descriptive names
+    (e.g. "660nm LEDs"), whereas each LED set calibrated against an LPA
+    needs to have a unique name. To use layouts, a file "led_archives.xlsx"
+    should be present in ``LED_CALIBRATION_PATH``. This file specifies the
+    mapping from layout name and LPA name to the appropriate LED set name.
 
     Properties
     ----------
     name : str
         Name of LPA.
+    n_rows : int, optional
+        Number of rows in the LPA.
+    n_cols : int, optional
+        Number of cols in the LPA.
+    n_channels : int, optional
+        Number of channels (LEDs per well) in the LPA.
     led_set_names : list, optional
-        LED set names for each channel. Either this or `layout_names`
-        should be specified.
+        LED set names for each channel.
     layout_names : list, optional
-        Layout names for each channel. Either this or `led_set_names`
-        should be specified.
+        Layout names for each channel.
 
     Attributes
     ----------
@@ -523,6 +527,8 @@ class LPA(object):
 
     Methods
     -------
+    load_led_sets
+        Load data from specified LED sets.
     set_all_dc
         Set all dc values for a specific channel or for all of them.
     set_all_gcal
@@ -557,72 +563,27 @@ class LPA(object):
     """
     def __init__(self,
                  name,
+                 n_rows=4,
+                 n_cols=6,
+                 n_channels=2,
                  led_set_names=None,
                  layout_names=None):
 
         # Store name
         self.name = name
 
-        # Check that both led_set_names and layout_names are not None
-        if (layout_names is None) and (led_set_names is None):
-            raise ValueError('layout_names or led_set_names should be '
-                'specified')
-
-        # Obtain LED set names from layout names
-        if layout_names is not None:
-            # More than two channels are not supported here
-            if len(layout_names) > 2:
-                raise NotImplementedError("more than 2 channels not supported")
-            # Load layout table
-            layout_table = pandas.read_excel(os.path.join(LED_CALIBRATION_PATH,
-                                                          'led_archives.xlsx'))
-            # Obtain led set names
-            led_set_names = []
-            for i, layout in enumerate(layout_names):
-                # Get data for corresponding row in layout table
-                channel = ['Top', 'Bot'][i]
-                layout_row = layout_table[(layout_table['LPA']==name) &\
-                                          (layout_table['Channel']==channel) &\
-                                          (layout_table['Layout']==layout)]
-                # Check for more or less than one hit
-                if len(layout_row) > 1:
-                    raise ValueError("more than one rows with LPA name {},"
-                        " Channel {}, Layout {} in led_archives.xlsx".format(
-                            name, channel, layout))
-                elif len(layout_row) < 1:
-                    raise ValueError("no layout data for LPA name {},"
-                        " Channel {}, Layout {} in led_archives.xlsx".format(
-                            name, channel, layout))
-                # Accumulate
-                led_set_names.append(layout_row.iloc[0]['Archive ID'])
-
-        # Initialize led sets
-        self.led_sets = []
-        for i, led_set_name in enumerate(led_set_names):
-            file_name = os.path.join(
-                LED_CALIBRATION_PATH,
-                led_set_name,
-                "{}_c{}".format(name, i+1),
-                "{}_{}_c{}.xlsx".format(led_set_name, name, i+1))
-            self.led_sets.append(LEDSet(name=led_set_name,
-                                        file_name=file_name))
-
         # Store dimensions
-        self.n_rows = self.led_sets[0].n_rows
-        self.n_cols = self.led_sets[0].n_cols
-        self.n_channels = len(self.led_sets)
+        self.n_rows = n_rows
+        self.n_cols = n_cols
+        self.n_channels = n_channels
 
-        # Consistency checks on all led sets
-        for led_set in self.led_sets:
-            if self.name != led_set.lpa_name:
-                raise ValueError("LPA name does not match for LED set {}"\
-                    .format(led_set.name))
-            if self.n_rows != led_set.n_rows:
-                raise ValueError("number of rows does not match for LED set {}"\
-                    .format(led_set.name))
-            if self.n_cols != led_set.n_cols:
-                raise ValueError("number of columns does not match for LED set "
-                    "{}".format(led_set.name))
+        # Initialize led_sets list to None
+        self.led_sets = None
+
+        # If either layout_names or led_set_names are different from None,
+        # initialize LED sets
+        if (layout_names is not None) or (led_set_names is not None):
+            self.load_led_sets(led_set_names, layout_names)
 
         # Initialize step size in ms
         self.step_size = 1000
@@ -638,6 +599,89 @@ class LPA(object):
                                       self.n_rows,
                                       self.n_cols,
                                       self.n_channels))
+
+    def load_led_sets(self, led_set_names=None, layout_names=None):
+        """
+        Load data from specified LED sets.
+
+        See object's description for an in-depth explanation on the
+        difference between LED set names and layout names.
+
+        Parameters
+        ----------
+        led_set_names : list, optional
+            LED set names for each channel. Either this or `layout_names`
+            should be specified. If both are specified, `layout_names` is
+            used.
+        layout_names : list, optional
+            Layout names for each channel. Either this or `led_set_names`
+            should be specified. If both are specified, `layout_names` is
+            used.
+
+        """
+        # Check that both led_set_names and layout_names are not None
+        if (layout_names is None) and (led_set_names is None):
+            raise ValueError('layout_names or led_set_names should be '
+                'specified')
+
+        # Verify length of layout_names and led_set_names
+        if (layout_names is not None) and \
+                (len(layout_names) != self.n_channels):
+            raise ValueError('exactly {} layout names should be specified'.\
+                format(self.n_channels))
+        if (led_set_names is not None) and \
+                (len(led_set_names) != self.n_channels):
+            raise ValueError('exactly {} LED set names should be specified'.\
+                format(self.n_channels))
+
+        # Obtain LED set names from layout names
+        if layout_names is not None:
+            # Load layout table
+            layout_table = pandas.read_excel(os.path.join(LED_CALIBRATION_PATH,
+                                                          'led_archives.xlsx'))
+            # Obtain led set names
+            led_set_names = []
+            for i, layout in enumerate(layout_names):
+                # Get data for corresponding row in layout table
+                channel = ['Top', 'Bot'][i]
+                layout_row = layout_table[(layout_table['LPA']==self.name) &\
+                                          (layout_table['Channel']==channel) &\
+                                          (layout_table['Layout']==layout)]
+                # Check for more or less than one hit
+                if len(layout_row) > 1:
+                    raise ValueError("more than one rows with LPA name {},"
+                        " Channel {}, Layout {} in led_archives.xlsx".format(
+                            self.name, channel, layout))
+                elif len(layout_row) < 1:
+                    raise ValueError("no layout data for LPA name {},"
+                        " Channel {}, Layout {} in led_archives.xlsx".format(
+                            self.name, channel, layout))
+                # Accumulate
+                led_set_names.append(layout_row.iloc[0]['Archive ID'])
+
+        # Initialize led sets
+        self.led_sets = []
+        for i, led_set_name in enumerate(led_set_names):
+            file_name = os.path.join(
+                LED_CALIBRATION_PATH,
+                led_set_name,
+                "{}_c{}".format(self.name, i+1),
+                "{}_{}_c{}.xlsx".format(led_set_name, self.name, i+1))
+            self.led_sets.append(LEDSet(name=led_set_name,
+                                        file_name=file_name))
+
+        # Consistency checks on all led sets
+        for led_set in self.led_sets:
+            if self.name != led_set.lpa_name:
+                raise ValueError("LPA name does not match for LED set {}"\
+                    .format(led_set.name))
+            if self.n_rows != led_set.n_rows:
+                raise ValueError("number of rows does not match for LED set {}"\
+                    .format(led_set.name))
+            if self.n_cols != led_set.n_cols:
+                raise ValueError("number of columns does not match for LED set "
+                    "{}".format(led_set.name))
+
 
     def set_all_dc(self, value, channel=None):
         """
@@ -744,7 +788,16 @@ class LPA(object):
         file_name : str
             Name of the file to load.
 
+        Raises
+        ------
+        Exception
+            If LED set information has not been loaded.
+
         """
+        # Check that LED set information has been loaded
+        if self.led_sets is None:
+            raise Exception("LED sets have not been loaded. "
+                "Call load_led_sets().")
         # Load light program file
         lpf = LPF(file_name)
         # Check dimensions
@@ -847,7 +900,16 @@ class LPA(object):
         file_name : str
             Name of the file to save.
 
+        Raises
+        ------
+        Exception
+            If LED set information has not been loaded.
+
         """
+        # Check that LED set information has been loaded
+        if self.led_sets is None:
+            raise Exception("LED sets have not been loaded. "
+                "Call load_led_sets().")
         n_steps = self.intensity.shape[0]
         # Initialize grayscale array
         gs = numpy.zeros((n_steps,
@@ -983,7 +1045,16 @@ class LPA(object):
         to convert the object's intensity values to the closest values that
         are possible at the current dc and gcal values.
 
+        Raises
+        ------
+        Exception
+            If LED set information has not been loaded.
+
         """
+        # Check that LED set information has been loaded
+        if self.led_sets is None:
+            raise Exception("LED sets have not been loaded. "
+                "Call load_led_sets().")
         # A separate array will be created and populated. This way, if something
         # goes wrong, we will not overwrite the object's intensity array.
         intensity = numpy.zeros_like(self.intensity)
@@ -1034,7 +1105,16 @@ class LPA(object):
         uniform : bool, optional
             Whether all returned dc values should be the same.
 
+        Raises
+        ------
+        Exception
+            If LED set information has not been loaded.
+
         """
+        # Check that LED set information has been loaded
+        if self.led_sets is None:
+            raise Exception("LED sets have not been loaded. "
+                "Call load_led_sets().")
         # Extract intensities from specified channel
         intensity = self.intensity[:, :, :, channel]
         # Obtain the maximum intensity per well
