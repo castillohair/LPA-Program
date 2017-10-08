@@ -488,8 +488,9 @@ class LPA(object):
 
     Properties
     ----------
-    name : str
-        Name of LPA.
+    name : str or None, optional
+        Name of LPA. If None, the object can be created but most methods
+        will nor work properly until the `name` attribute is set.
     n_rows : int, optional
         Number of rows in the LPA.
     n_cols : int, optional
@@ -503,8 +504,9 @@ class LPA(object):
 
     Attributes
     ----------
-    name : str
-        Name of the LPA.
+    name : str or None
+        Name of the LPA. If None, most methods will nor work properly until
+        the attribute has been set.
     led_sets : list
         LEDSet objects for each channel.
     n_rows : int
@@ -562,7 +564,7 @@ class LPA(object):
 
     """
     def __init__(self,
-                 name,
+                 name=None,
                  n_rows=4,
                  n_cols=6,
                  n_channels=2,
@@ -605,7 +607,8 @@ class LPA(object):
         Load data from specified LED sets.
 
         See object's description for an in-depth explanation on the
-        difference between LED set names and layout names.
+        difference between LED set names and layout names. The `name`
+        attribute should be set for this function to work.
 
         Parameters
         ----------
@@ -619,6 +622,9 @@ class LPA(object):
             used.
 
         """
+        # Check that `name` attribute is set
+        if self.name is None:
+            raise ValueError('name attribute must be set')
         # Check that both led_set_names and layout_names are not None
         if (layout_names is None) and (led_set_names is None):
             raise ValueError('layout_names or led_set_names should be '
@@ -957,6 +963,9 @@ class LPA(object):
             be created in the directory specified by `path`.
 
         """
+        # Check that `name` attribute is set
+        if self.name is None:
+            raise ValueError('name attribute must be set')
         # Add name of lpa to path
         path = os.path.join(path, self.name)
         # Create folder if necessary
