@@ -518,6 +518,14 @@ class TestLPA(unittest.TestCase):
         self.assertEqual(lpa.n_cols, 6)
         self.assertIsNone(lpa.led_sets)
 
+    def test_create_lpa_no_name_with_led_sets(self):
+        with self.assertRaisesRegexp(Exception, "name attribute must be set"):
+            lpa = lpaprogram.LPA(led_set_names=['EO_12', 'EO_20'])
+
+    def test_create_lpa_no_name_with_layout_names(self):
+        with self.assertRaisesRegexp(Exception, "name attribute must be set"):
+            lpa = lpaprogram.LPA(layout_names=['520-2-KB', '660-LS'])
+
     def test_create_lpa_no_name_and_call_functions(self):
         lpa = lpaprogram.LPA()
         # The following function calls should not raise exceptions
@@ -574,6 +582,76 @@ class TestLPA(unittest.TestCase):
             lpa.optimize_dc,
             channel=0)
 
+    def test_create_lpa_set_name_and_call_functions(self):
+        lpa = lpaprogram.LPA()
+        lpa.name = 'Jennie'
+        # The following function calls should not raise exceptions
+        lpa.set_all_dc(10)
+        lpa.set_all_gcal(200)
+        lpa.set_n_steps(1000)
+        lpa.set_timecourse_staggered(
+            intensity=self.timecourse_ch0,
+            intensity_pre=self.timecourse_pre_ch0,
+            sampling_steps=self.timecourse_sampling_steps_ch0,
+            channel=0)
+        lpa.load_dc(self.dc_file_to_load)
+        lpa.load_dc(self.gcal_file_to_load)
+        lpa.save_dc(os.path.join(self.temp_dir, 'dc_no_led_set.txt'))
+        lpa.save_gcal(os.path.join(self.temp_dir, 'gcal_no_led_set.txt'))
+        # The following function calls should raise exceptions
+        exception_msg = "LED sets have not been loaded. Call load_led_sets()."
+        self.assertRaisesRegexp(
+            Exception,
+            exception_msg,
+            lpa.load_lpf,
+            self.lpf_file_to_load)
+        self.assertRaisesRegexp(
+            Exception,
+            exception_msg,
+            lpa.load_files,
+            self.folder_to_load)
+        self.assertRaisesRegexp(
+            Exception,
+            exception_msg,
+            lpa.save_lpf,
+            os.path.join(self.temp_dir, 'program_no_led_set.lpf'))
+        self.assertRaisesRegexp(
+            Exception,
+            exception_msg,
+            lpa.save_files,
+            self.temp_dir)
+        self.assertRaisesRegexp(
+            Exception,
+            exception_msg,
+            lpa.discretize_intensity)
+        self.assertRaisesRegexp(
+            Exception,
+            exception_msg,
+            lpa.optimize_dc,
+            channel=0)
+
+    def test_create_lpa_set_name_load_led_set(self):
+        lpa = lpaprogram.LPA()
+        lpa.name = 'Jennie'
+        lpa.load_led_sets(led_set_names=['EO_12', 'EO_20'])
+        self.assertEqual(lpa.n_channels, 2)
+        self.assertEqual(lpa.n_rows, 4)
+        self.assertEqual(lpa.n_cols, 6)
+        self.assertIsInstance(lpa.led_sets[0], lpaprogram.LEDSet)
+        self.assertIsInstance(lpa.led_sets[1], lpaprogram.LEDSet)
+
+    def test_create_lpa_set_name_load_layouts(self):
+        lpa = lpaprogram.LPA()
+        lpa.name = 'Jennie'
+        lpa.load_led_sets(layout_names=['520-2-KB', '660-LS'])
+        self.assertEqual(lpa.n_channels, 2)
+        self.assertEqual(lpa.n_rows, 4)
+        self.assertEqual(lpa.n_cols, 6)
+        self.assertIsInstance(lpa.led_sets[0], lpaprogram.LEDSet)
+        self.assertIsInstance(lpa.led_sets[1], lpaprogram.LEDSet)
+        self.assertEqual(lpa.led_sets[0].name, 'EO_12')
+        self.assertEqual(lpa.led_sets[1].name, 'EO_20')
+
     def test_create_lpa_no_led_set(self):
         lpa = lpaprogram.LPA(name='Jennie')
         self.assertEqual(lpa.name, 'Jennie')
@@ -628,6 +706,26 @@ class TestLPA(unittest.TestCase):
             exception_msg,
             lpa.optimize_dc,
             channel=0)
+
+    def test_create_lpa_load_led_set(self):
+        lpa = lpaprogram.LPA(name='Jennie')
+        lpa.load_led_sets(led_set_names=['EO_12', 'EO_20'])
+        self.assertEqual(lpa.n_channels, 2)
+        self.assertEqual(lpa.n_rows, 4)
+        self.assertEqual(lpa.n_cols, 6)
+        self.assertIsInstance(lpa.led_sets[0], lpaprogram.LEDSet)
+        self.assertIsInstance(lpa.led_sets[1], lpaprogram.LEDSet)
+
+    def test_create_lpa_load_layouts(self):
+        lpa = lpaprogram.LPA(name='Jennie')
+        lpa.load_led_sets(layout_names=['520-2-KB', '660-LS'])
+        self.assertEqual(lpa.n_channels, 2)
+        self.assertEqual(lpa.n_rows, 4)
+        self.assertEqual(lpa.n_cols, 6)
+        self.assertIsInstance(lpa.led_sets[0], lpaprogram.LEDSet)
+        self.assertIsInstance(lpa.led_sets[1], lpaprogram.LEDSet)
+        self.assertEqual(lpa.led_sets[0].name, 'EO_12')
+        self.assertEqual(lpa.led_sets[1].name, 'EO_20')
 
     def test_create_lpa_led_set(self):
         lpa = lpaprogram.LPA(name='Jennie', led_set_names=['EO_12', 'EO_20'])
