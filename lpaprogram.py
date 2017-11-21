@@ -18,6 +18,7 @@ import pandas
 from matplotlib import pyplot
 
 LED_CALIBRATION_PATH = ""
+LED_LAYOUT_FILENAME = "led_layouts.xlsx"
 
 class LPF(object):
     """
@@ -164,11 +165,11 @@ class LEDSet(object):
     """
     Object that represents an LED set.
 
-    Calibration measurements of this LED set in a specific LPA have been
-    conducted with specific values of dot correction (dc) and grayscale
-    calibration (gcal). These measurements should be saved into an Excel
-    table that is loaded during the object's creation. These measurements
-    are used to convert from light intensity values in µmol/(m^2*s) into
+    Calibration measurements of this LED set in a specific LPA should have
+    been conducted with specific values of dot correction (dc) and
+    grayscale calibration (gcal). These measurements should be saved into
+    an Excel table that is loaded during the object's creation. These are
+    then used to convert from light intensity values in µmol/(m^2*s) into
     grayscale values at the specified dc and gcal values, and viceversa.
 
     Parameters
@@ -467,24 +468,30 @@ class LPA(object):
 
     This object allows the user to specify light intensity in µmol/(m^2*s)
     for each LED in an LPA at every time step, and generates the text and
-    binary files used by an LPA. The user can also direclty manipulate dot
+    binary files used by an LPA. The user can also directly manipulate dot
     correction and grayscale calibration values. In addition, light
     intensities can be read from LPA files using this object.
 
     To convert light intensities to raw grayscale values and viceversa,
-    this object uses LEDSet objects. The names of these should be specified
+    this object uses LEDSet objects. The LED set names should be specified
     either during the object's creation or later using the function
     `load_led_sets()`. Calibration data of LED sets are assumed to be
     present in the folder "{LED_CALIBRATION_PATH} / {led_set_name} /
     {lpa_name}_{channel}" in a file named
-    "{led_set_name}_{lpa_name}_{channel}.xlsx". Alternatively, LED layouts
-    can be specified instead of LED set names. A layout is a group of LED
-    sets that use similar LEDs, but with each LED set calibrated against
-    different LPAs. Layouts can have more generic and descriptive names
-    (e.g. "660nm LEDs"), whereas each LED set calibrated against an LPA
-    needs to have a unique name. To use layouts, a file "led_archives.xlsx"
-    should be present in ``LED_CALIBRATION_PATH``. This file specifies the
-    mapping from layout name and LPA name to the appropriate LED set name.
+    "{led_set_name}_{lpa_name}_{channel}.xlsx".
+
+    Alternatively, "LED layouts" can be specified instead of LED set names.
+    A layout describes a mapping from LED types to each well of an
+    arbitrary LPA, without reference to a specific LPA or LEDs. Several LED
+    sets can conform to a layout. For example, a layout can describe red
+    LEDs in all wells of any LPA, while an LED set that conforms refers to
+    a specific group of red LEDs calibrated against one specific LPA.
+    Layouts can have more generic and descriptive names (e.g. "660nm
+    LEDs"), whereas each LED set calibrated against an LPA needs to have a
+    unique name. A combination of LED layout, LPA name, and channel must
+    map to one and only one LED set. This mapping should be in an Excel
+    file named ``LED_LAYOUT_FILENAME`` contained in
+    ``LED_CALIBRATION_PATH``.
 
     Properties
     ----------
@@ -644,7 +651,7 @@ class LPA(object):
         if layout_names is not None:
             # Load layout table
             layout_table = pandas.read_excel(os.path.join(LED_CALIBRATION_PATH,
-                                                          'led_archives.xlsx'))
+                                                          LED_LAYOUT_FILENAME))
             # Obtain led set names
             led_set_names = []
             for i, layout in enumerate(layout_names):
@@ -656,12 +663,12 @@ class LPA(object):
                 # Check for more or less than one hit
                 if len(layout_row) > 1:
                     raise ValueError("more than one rows with LPA name {},"
-                        " Channel {}, Layout {} in led_archives.xlsx".format(
-                            self.name, channel, layout))
+                        " Channel {}, Layout {} in {}".format(
+                            self.name, channel, layout, LED_LAYOUT_FILENAME))
                 elif len(layout_row) < 1:
                     raise ValueError("no layout data for LPA name {},"
-                        " Channel {}, Layout {} in led_archives.xlsx".format(
-                            self.name, channel, layout))
+                        " Channel {}, Layout {} in {}".format(
+                            self.name, channel, layout, LED_LAYOUT_FILENAME))
                 # Accumulate
                 led_set_names.append(layout_row.iloc[0]['Archive ID'])
 
