@@ -12,6 +12,7 @@ __version__ = '1.0.0b4'
 import os
 import random
 import struct
+import warnings
 
 import numpy
 import pandas
@@ -43,13 +44,6 @@ class LPF(object):
     grayscale : array
         Grayscale LED intensities. Its dimensions are ``(n_steps,
         n_channels)``.
-
-    Methods
-    -------
-    load
-        Load data from an lpf file.
-    save
-        Save data into an lpf file.
 
     """
 
@@ -193,13 +187,6 @@ class LEDSet(object):
         Channel of the LPA in which the LED set is located.
     calibration_data : DataFrame
         A table with the LED set calibration data.
-
-    Methods
-    -------
-    get_intensity
-        Calculate intensity in µmol/(m^2*s) from grayscale values.
-    get_grayscale
-        Calculate grayscale values from intensity values in µmol/(m^2*s).
 
     """
     def __init__(self, name, file_name):
@@ -534,41 +521,6 @@ class LPA(object):
         Array of size (n_steps, n_rows, n_cols, n_channels) with light
         intensity values for each LED, in µmol/(m^2*s).
 
-    Methods
-    -------
-    load_led_sets
-        Load data from specified LED sets.
-    set_all_dc
-        Set all dc values for a specific channel or for all of them.
-    set_all_gcal
-        Set all gcal values for a specific channel or for all of them.
-    set_n_steps
-        Resize the intensity array to a specific number of time steps.
-    load_dc
-        Load dc values from a tab-separated text file.
-    load_gcal
-        Load gcal values from a tab-separated text file.
-    load_lpf
-        Load intensity values from a binary .lpf file.
-    load_files
-        Load a set of dc, gcal, and lpf files in a specified folder.
-    save_dc
-        Save dc values in a tab-separated text file.
-    save_gcal
-        Save gcal values in a tab-separated text file.
-    save_lpf
-        Save grayscale values in a binary .lpf file.
-    save_files
-        Save dc, gcal, and .lpf files from the contents of this object.
-    set_timecourse_staggered
-        Set an intensity timecourse on many wells, with staggered delays.
-    discretize_intensity
-        Discretize the values in the intensity array.
-    optimize_dc
-        Get the lowest dc value so that a specified intensity is possible.
-    plot_intensity
-        Plot the light intensity for each well in the LPA.
-
     """
     def __init__(self,
                  name=None,
@@ -617,6 +569,10 @@ class LPA(object):
         difference between LED set names and layout names. The `name`
         attribute should be set for this function to work.
 
+        ``None`` can be specified as an element of either `led_set_names`
+        or `layout_names`. In this case, no LEDSet is loaded, and
+        intensities are read, written, and discretized as zero.
+
         Parameters
         ----------
         led_set_names : list, optional
@@ -655,6 +611,11 @@ class LPA(object):
             # Obtain led set names
             led_set_names = []
             for i, layout in enumerate(layout_names):
+                # If layout is intentionally not specified, propagate to
+                # LED set name
+                if layout is None:
+                    led_set_names.append(None)
+                    continue
                 # Get data for corresponding row in layout table
                 channel = ['Top', 'Bot'][i]
                 layout_row = layout_table[(layout_table['LPA']==self.name) &\
@@ -675,26 +636,29 @@ class LPA(object):
         # Initialize led sets
         self.led_sets = []
         for i, led_set_name in enumerate(led_set_names):
-            file_name = os.path.join(
-                LED_CALIBRATION_PATH,
-                led_set_name,
-                "{}_c{}".format(self.name, i+1),
-                "{}_{}_c{}.xlsx".format(led_set_name, self.name, i+1))
-            self.led_sets.append(LEDSet(name=led_set_name,
-                                        file_name=file_name))
+            if led_set_name is None:
+                self.led_sets.append(None)
+            else:
+                file_name = os.path.join(
+                    LED_CALIBRATION_PATH,
+                    led_set_name,
+                    "{}_c{}".format(self.name, i+1),
+                    "{}_{}_c{}.xlsx".format(led_set_name, self.name, i+1))
+                self.led_sets.append(LEDSet(name=led_set_name,
+                                            file_name=file_name))
 
         # Consistency checks on all led sets
         for led_set in self.led_sets:
-            if self.name != led_set.lpa_name:
-                raise ValueError("LPA name does not match for LED set {}"\
-                    .format(led_set.name))
-            if self.n_rows != led_set.n_rows:
-                raise ValueError("number of rows does not match for LED set {}"\
-                    .format(led_set.name))
-            if self.n_cols != led_set.n_cols:
-                raise ValueError("number of columns does not match for LED set "
-                    "{}".format(led_set.name))
-
+            if led_set is not None:
+                if self.name != led_set.lpa_name:
+                    raise ValueError("LPA name does not match for LED set "
+                        "{}".format(led_set.name))
+                if self.n_rows != led_set.n_rows:
+                    raise ValueError("number of rows does not match for LED "
+                        "set {}".format(led_set.name))
+                if self.n_cols != led_set.n_cols:
+                    raise ValueError("number of columns does not match for LED "
+                        "set {}".format(led_set.name))
 
     def set_all_dc(self, value, channel=None):
         """
@@ -811,6 +775,11 @@ class LPA(object):
         if self.led_sets is None:
             raise Exception("LED sets have not been loaded. "
                 "Call load_led_sets().")
+        # Throw warning if one of the led sets is not present
+        for channel, led_set in enumerate(self.led_sets):
+            if led_set is None:
+                warnings.warn("No LEDSet loaded for channel "
+                    "{}. Will read all intensities as zero.".format(channel))
         # Load light program file
         lpf = LPF(file_name)
         # Check dimensions
@@ -825,11 +794,15 @@ class LPA(object):
                                           self.n_channels))
         for step in range(lpf.n_steps):
             for channel in range(self.n_channels):
-                # Get intensities from LED set
-                intensity_sch = self.led_sets[channel].get_intensity(
-                    gs=gs[step,:,:,channel].flatten(),
-                    dc=self.dc[:,:,channel].flatten(),
-                    gcal=self.gcal[:,:,channel].flatten())
+                if self.led_sets[channel] is None:
+                    # Set intensity as zero
+                    intensity_sch = numpy.zeros(self.n_rows*self.n_cols)
+                else:
+                    # Get intensities from LED set
+                    intensity_sch = self.led_sets[channel].get_intensity(
+                        gs=gs[step,:,:,channel].flatten(),
+                        dc=self.dc[:,:,channel].flatten(),
+                        gcal=self.gcal[:,:,channel].flatten())
                 # Resize and add to intensity array
                 intensity_sch.resize(self.n_rows, self.n_cols)
                 self.intensity[step, :, :, channel] = intensity_sch
@@ -923,6 +896,13 @@ class LPA(object):
         if self.led_sets is None:
             raise Exception("LED sets have not been loaded. "
                 "Call load_led_sets().")
+        # Throw warning if one of the led sets is not present
+        for channel, led_set in enumerate(self.led_sets):
+            if led_set is None:
+                warnings.warn("No LEDSet loaded for channel "
+                    "{}. Will write all grayscale values as zero.".format(
+                        channel))
+
         n_steps = self.intensity.shape[0]
         # Initialize grayscale array
         gs = numpy.zeros((n_steps,
@@ -931,19 +911,22 @@ class LPA(object):
         # Convert intensities to grayscale values
         for step in range(n_steps):
             for channel in range(self.n_channels):
-                try:
-                    gs[step, :, channel] = self.led_sets[channel].get_grayscale(
-                        row=None,
-                        col=None,
-                        intensity=self.intensity[step, :, :, channel].flatten(),
-                        dc=self.dc[:,:,channel].flatten(),
-                        gcal=self.gcal[:,:,channel].flatten(),
-                        )
-                except ValueError as e:
-                    e.args = ("on step {}, channel {}: ".format(
-                        step,
-                        channel) + e.args[0],)
-                    raise
+                if self.led_sets[channel] is not None:
+                    try:
+                        gs[step, :, channel] = self.led_sets[channel].\
+                            get_grayscale(
+                                row=None,
+                                col=None,
+                                intensity=self.intensity[step, :, :, channel].\
+                                    flatten(),
+                                dc=self.dc[:,:,channel].flatten(),
+                                gcal=self.gcal[:,:,channel].flatten(),
+                                )
+                    except ValueError as e:
+                        e.args = ("on step {}, channel {}: ".format(
+                            step,
+                            channel) + e.args[0],)
+                        raise
         # Flatten dimension corresponding to channels
         gs.resize(n_steps, self.n_rows*self.n_cols*self.n_channels)
         # Create LPF object and save
@@ -1071,27 +1054,35 @@ class LPA(object):
         if self.led_sets is None:
             raise Exception("LED sets have not been loaded. "
                 "Call load_led_sets().")
+        # Throw warning if one of the led sets is not present
+        for channel, led_set in enumerate(self.led_sets):
+            if led_set is None:
+                warnings.warn("No LEDSet loaded for channel "
+                    "{}. Will discretize all intensities to zero.".format(
+                        channel))
         # A separate array will be created and populated. This way, if something
         # goes wrong, we will not overwrite the object's intensity array.
         intensity = numpy.zeros_like(self.intensity)
 
         for step in range(self.intensity.shape[0]):
             for channel in range(self.n_channels):
-                intensity_sch = self.intensity[step, :, :, channel].flatten()
-                # Call to LEDSet.discretize_intensity is inside a try block in
-                # case the specified intensity is not possible.
-                try:
-                    intensity_sch = self.led_sets[channel].discretize_intensity(
-                        intensity=intensity_sch,
-                        dc=self.dc[:,:,channel].flatten(),
-                        gcal=self.gcal[:,:,channel].flatten(),
-                        )
-                except ValueError as e:
-                    e.args = ("on step {}, channel {}: ".format(
-                        step,
-                        channel) + e.args[0],)
-                    raise
-                else:
+                if self.led_sets[channel] is not None:
+                    intensity_sch = self.intensity[step, :, :, channel].\
+                        flatten()
+                    # Call to LEDSet.discretize_intensity is inside a try block
+                    # in case the specified intensity is not possible.
+                    try:
+                        intensity_sch = self.led_sets[channel].\
+                            discretize_intensity(
+                                intensity=intensity_sch,
+                                dc=self.dc[:,:,channel].flatten(),
+                                gcal=self.gcal[:,:,channel].flatten(),
+                                )
+                    except ValueError as e:
+                        e.args = ("on step {}, channel {}: ".format(
+                            step,
+                            channel) + e.args[0],)
+                        raise
                     intensity_sch.resize(self.n_rows, self.n_cols)
                     intensity[step, :, :, channel] = intensity_sch
 
@@ -1131,6 +1122,11 @@ class LPA(object):
         if self.led_sets is None:
             raise Exception("LED sets have not been loaded. "
                 "Call load_led_sets().")
+        # If LED set for channel not specified, throw warning and return
+        if self.led_sets[channel] is None:
+            warnings.warn("No LEDSet loaded for channel {}. ".format(channel) +\
+                "DC optimization not performed.")
+            return
         # Extract intensities from specified channel
         intensity = self.intensity[:, :, :, channel]
         # Obtain the maximum intensity per well
