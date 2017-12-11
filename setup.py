@@ -75,7 +75,7 @@ setup(
     ],
 
     # What does your project relate to?
-    keywords='bioinformatics',
+    keywords='optogenetics synthetic biology experiment design automation',
 
     # You can just specify the packages manually here if your project is
     # simple. Or you can use find_packages().
@@ -87,9 +87,10 @@ setup(
     # your project is installed. For an analysis of "install_requires" vs pip's
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
-    install_requires=['numpy>=1.11.3',
-                      'pandas>=0.19.2',
+    install_requires=['numpy>=1.12.1',
+                      'pandas>=0.20.2',
                       'matplotlib>=2.0.0',
+                      'six>=1.10.0'
                       'xlrd>=1.0.0'],
 
     # List additional groups of dependencies here (e.g. development
