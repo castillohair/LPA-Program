@@ -5,6 +5,7 @@ Unit tests for the LPA class
 
 import filecmp
 import os
+import six
 import shutil
 import unittest
 import warnings
@@ -520,11 +521,11 @@ class TestLPA(unittest.TestCase):
         self.assertIsNone(lpa.led_sets)
 
     def test_create_lpa_no_name_with_led_sets(self):
-        with self.assertRaisesRegexp(Exception, "name attribute must be set"):
+        with six.assertRaisesRegex(self, Exception, "name attribute must be set"):
             lpa = lpaprogram.LPA(led_set_names=['EO_12', 'EO_20'])
 
     def test_create_lpa_no_name_with_layout_names(self):
-        with self.assertRaisesRegexp(Exception, "name attribute must be set"):
+        with six.assertRaisesRegex(self, Exception, "name attribute must be set"):
             lpa = lpaprogram.LPA(layout_names=['520-2-KB', '660-LS'])
 
     def test_create_lpa_no_name_and_call_functions(self):
@@ -545,12 +546,14 @@ class TestLPA(unittest.TestCase):
         # The following function calls should raise exceptions due to name not
         # being specified.
         exception_msg = "name attribute must be set"
-        self.assertRaisesRegexp(
+        six.assertRaisesRegex(
+            self,
             Exception,
             exception_msg,
             lpa.load_led_sets,
             self.temp_dir)
-        self.assertRaisesRegexp(
+        six.assertRaisesRegex(
+            self,
             Exception,
             exception_msg,
             lpa.save_files,
@@ -558,26 +561,31 @@ class TestLPA(unittest.TestCase):
         # The following function calls should raise exceptions due to LED sets
         # not being specified
         exception_msg = "LED sets have not been loaded. Call load_led_sets()."
-        self.assertRaisesRegexp(
+        six.assertRaisesRegex(
+            self,
             Exception,
             exception_msg,
             lpa.load_lpf,
             self.lpf_file_to_load)
-        self.assertRaisesRegexp(
+        six.assertRaisesRegex(
+            self,
             Exception,
             exception_msg,
             lpa.load_files,
             self.folder_to_load)
-        self.assertRaisesRegexp(
+        six.assertRaisesRegex(
+            self,
             Exception,
             exception_msg,
             lpa.save_lpf,
             os.path.join(self.temp_dir, 'program_no_led_set.lpf'))
-        self.assertRaisesRegexp(
+        six.assertRaisesRegex(
+            self,
             Exception,
             exception_msg,
             lpa.discretize_intensity)
-        self.assertRaisesRegexp(
+        six.assertRaisesRegex(
+            self,
             Exception,
             exception_msg,
             lpa.optimize_dc,
@@ -601,31 +609,37 @@ class TestLPA(unittest.TestCase):
         lpa.save_gcal(os.path.join(self.temp_dir, 'gcal_no_led_set.txt'))
         # The following function calls should raise exceptions
         exception_msg = "LED sets have not been loaded. Call load_led_sets()."
-        self.assertRaisesRegexp(
+        six.assertRaisesRegex(
+            self,
             Exception,
             exception_msg,
             lpa.load_lpf,
             self.lpf_file_to_load)
-        self.assertRaisesRegexp(
+        six.assertRaisesRegex(
+            self,
             Exception,
             exception_msg,
             lpa.load_files,
             self.folder_to_load)
-        self.assertRaisesRegexp(
+        six.assertRaisesRegex(
+            self,
             Exception,
             exception_msg,
             lpa.save_lpf,
             os.path.join(self.temp_dir, 'program_no_led_set.lpf'))
-        self.assertRaisesRegexp(
+        six.assertRaisesRegex(
+            self,
             Exception,
             exception_msg,
             lpa.save_files,
             self.temp_dir)
-        self.assertRaisesRegexp(
+        six.assertRaisesRegex(
+            self,
             Exception,
             exception_msg,
             lpa.discretize_intensity)
-        self.assertRaisesRegexp(
+        six.assertRaisesRegex(
+            self,
             Exception,
             exception_msg,
             lpa.optimize_dc,
@@ -678,31 +692,37 @@ class TestLPA(unittest.TestCase):
         lpa.save_gcal(os.path.join(self.temp_dir, 'gcal_no_led_set.txt'))
         # The following function calls should raise exceptions
         exception_msg = "LED sets have not been loaded. Call load_led_sets()."
-        self.assertRaisesRegexp(
+        six.assertRaisesRegex(
+            self,
             Exception,
             exception_msg,
             lpa.load_lpf,
             self.lpf_file_to_load)
-        self.assertRaisesRegexp(
+        six.assertRaisesRegex(
+            self,
             Exception,
             exception_msg,
             lpa.load_files,
             self.folder_to_load)
-        self.assertRaisesRegexp(
+        six.assertRaisesRegex(
+            self,
             Exception,
             exception_msg,
             lpa.save_lpf,
             os.path.join(self.temp_dir, 'program_no_led_set.lpf'))
-        self.assertRaisesRegexp(
+        six.assertRaisesRegex(
+            self,
             Exception,
             exception_msg,
             lpa.save_files,
             self.temp_dir)
-        self.assertRaisesRegexp(
+        six.assertRaisesRegex(
+            self,
             Exception,
             exception_msg,
             lpa.discretize_intensity)
-        self.assertRaisesRegexp(
+        six.assertRaisesRegex(
+            self,
             Exception,
             exception_msg,
             lpa.optimize_dc,
@@ -934,8 +954,8 @@ class TestLPA(unittest.TestCase):
             lpa.load_lpf(self.lpf_file_to_load)
             # Verify warning info
             self.assertEqual(len(w), 1)
-            self.assertEqual(w[0].message[0], "No LEDSet loaded for channel " +\
-                    "1. Will read all intensities as zero.")
+            self.assertIn("No LEDSet loaded for channel 1. Will read all " + \
+                "intensities as zero.", str(w[0].message))
         # Test on step duration
         self.assertEqual(lpa.step_size, self.step_size_to_load_exp)
         # Tests on intesity array
@@ -1014,8 +1034,8 @@ class TestLPA(unittest.TestCase):
             lpa.save_lpf(os.path.join(self.temp_dir, 'program.lpf'))
             # Verify warning info
             self.assertEqual(len(w), 1)
-            self.assertEqual(w[0].message[0], "No LEDSet loaded for channel " +\
-                    "1. Will write all grayscale values as zero.")
+            self.assertIn("No LEDSet loaded for channel 1. Will write all " + \
+                "grayscale values as zero.", str(w[0].message))
         # Load file and compare with expected contents
         lpf_file_name = os.path.join(self.temp_dir, 'program.lpf')
         lpf = lpaprogram.LPF(lpf_file_name)
@@ -1184,8 +1204,8 @@ class TestLPA(unittest.TestCase):
             lpa.discretize_intensity()
             # Verify warning info
             self.assertEqual(len(w), 1)
-            self.assertEqual(w[0].message[0], "No LEDSet loaded for channel " +\
-                    "1. Will discretize all intensities to zero.")
+            self.assertIn("No LEDSet loaded for channel 1. Will discretize " +\
+                "all intensities to zero.", str(w[0].message))
 
         # Test
         for step in range(lpa.intensity.shape[0]):
@@ -1271,8 +1291,8 @@ class TestLPA(unittest.TestCase):
             lpa.optimize_dc(channel=1, uniform=True)
             # Verify warning info
             self.assertEqual(len(w), 1)
-            self.assertEqual(w[0].message[0], "No LEDSet loaded for channel " +\
-                    "1. DC optimization not performed.")
+            self.assertEqual("No LEDSet loaded for channel 1. DC optimization"+\
+                " not performed.", str(w[0].message))
         # Test
         numpy.testing.assert_array_equal(lpa.dc[:,:,0], 8)
         numpy.testing.assert_array_equal(lpa.dc[:,:,1], 7)
