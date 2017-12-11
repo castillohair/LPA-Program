@@ -5,8 +5,10 @@ Unit tests for the LPA class
 
 import filecmp
 import os
+import six
 import shutil
 import unittest
+import warnings
 
 import numpy
 import pandas
@@ -510,6 +512,261 @@ class TestLPA(unittest.TestCase):
         if os.path.exists(self.temp_dir):
             shutil.rmtree(self.temp_dir)
 
+    def test_create_lpa_no_name(self):
+        lpa = lpaprogram.LPA()
+        self.assertIsNone(lpa.name)
+        self.assertEqual(lpa.n_channels, 2)
+        self.assertEqual(lpa.n_rows, 4)
+        self.assertEqual(lpa.n_cols, 6)
+        self.assertIsNone(lpa.led_sets)
+
+    def test_create_lpa_no_name_with_led_sets(self):
+        with six.assertRaisesRegex(self, Exception, "name attribute must be set"):
+            lpa = lpaprogram.LPA(led_set_names=['EO_12', 'EO_20'])
+
+    def test_create_lpa_no_name_with_layout_names(self):
+        with six.assertRaisesRegex(self, Exception, "name attribute must be set"):
+            lpa = lpaprogram.LPA(layout_names=['520-2-KB', '660-LS'])
+
+    def test_create_lpa_no_name_and_call_functions(self):
+        lpa = lpaprogram.LPA()
+        # The following function calls should not raise exceptions
+        lpa.set_all_dc(10)
+        lpa.set_all_gcal(200)
+        lpa.set_n_steps(1000)
+        lpa.set_timecourse_staggered(
+            intensity=self.timecourse_ch0,
+            intensity_pre=self.timecourse_pre_ch0,
+            sampling_steps=self.timecourse_sampling_steps_ch0,
+            channel=0)
+        lpa.load_dc(self.dc_file_to_load)
+        lpa.load_dc(self.gcal_file_to_load)
+        lpa.save_dc(os.path.join(self.temp_dir, 'dc_no_led_set.txt'))
+        lpa.save_gcal(os.path.join(self.temp_dir, 'gcal_no_led_set.txt'))
+        # The following function calls should raise exceptions due to name not
+        # being specified.
+        exception_msg = "name attribute must be set"
+        six.assertRaisesRegex(
+            self,
+            Exception,
+            exception_msg,
+            lpa.load_led_sets,
+            self.temp_dir)
+        six.assertRaisesRegex(
+            self,
+            Exception,
+            exception_msg,
+            lpa.save_files,
+            self.temp_dir)
+        # The following function calls should raise exceptions due to LED sets
+        # not being specified
+        exception_msg = "LED sets have not been loaded. Call load_led_sets()."
+        six.assertRaisesRegex(
+            self,
+            Exception,
+            exception_msg,
+            lpa.load_lpf,
+            self.lpf_file_to_load)
+        six.assertRaisesRegex(
+            self,
+            Exception,
+            exception_msg,
+            lpa.load_files,
+            self.folder_to_load)
+        six.assertRaisesRegex(
+            self,
+            Exception,
+            exception_msg,
+            lpa.save_lpf,
+            os.path.join(self.temp_dir, 'program_no_led_set.lpf'))
+        six.assertRaisesRegex(
+            self,
+            Exception,
+            exception_msg,
+            lpa.discretize_intensity)
+        six.assertRaisesRegex(
+            self,
+            Exception,
+            exception_msg,
+            lpa.optimize_dc,
+            channel=0)
+
+    def test_create_lpa_set_name_and_call_functions(self):
+        lpa = lpaprogram.LPA()
+        lpa.name = 'Jennie'
+        # The following function calls should not raise exceptions
+        lpa.set_all_dc(10)
+        lpa.set_all_gcal(200)
+        lpa.set_n_steps(1000)
+        lpa.set_timecourse_staggered(
+            intensity=self.timecourse_ch0,
+            intensity_pre=self.timecourse_pre_ch0,
+            sampling_steps=self.timecourse_sampling_steps_ch0,
+            channel=0)
+        lpa.load_dc(self.dc_file_to_load)
+        lpa.load_dc(self.gcal_file_to_load)
+        lpa.save_dc(os.path.join(self.temp_dir, 'dc_no_led_set.txt'))
+        lpa.save_gcal(os.path.join(self.temp_dir, 'gcal_no_led_set.txt'))
+        # The following function calls should raise exceptions
+        exception_msg = "LED sets have not been loaded. Call load_led_sets()."
+        six.assertRaisesRegex(
+            self,
+            Exception,
+            exception_msg,
+            lpa.load_lpf,
+            self.lpf_file_to_load)
+        six.assertRaisesRegex(
+            self,
+            Exception,
+            exception_msg,
+            lpa.load_files,
+            self.folder_to_load)
+        six.assertRaisesRegex(
+            self,
+            Exception,
+            exception_msg,
+            lpa.save_lpf,
+            os.path.join(self.temp_dir, 'program_no_led_set.lpf'))
+        six.assertRaisesRegex(
+            self,
+            Exception,
+            exception_msg,
+            lpa.save_files,
+            self.temp_dir)
+        six.assertRaisesRegex(
+            self,
+            Exception,
+            exception_msg,
+            lpa.discretize_intensity)
+        six.assertRaisesRegex(
+            self,
+            Exception,
+            exception_msg,
+            lpa.optimize_dc,
+            channel=0)
+
+    def test_create_lpa_set_name_load_led_set(self):
+        lpa = lpaprogram.LPA()
+        lpa.name = 'Jennie'
+        lpa.load_led_sets(led_set_names=['EO_12', 'EO_20'])
+        self.assertEqual(lpa.n_channels, 2)
+        self.assertEqual(lpa.n_rows, 4)
+        self.assertEqual(lpa.n_cols, 6)
+        self.assertIsInstance(lpa.led_sets[0], lpaprogram.LEDSet)
+        self.assertIsInstance(lpa.led_sets[1], lpaprogram.LEDSet)
+
+    def test_create_lpa_set_name_load_layouts(self):
+        lpa = lpaprogram.LPA()
+        lpa.name = 'Jennie'
+        lpa.load_led_sets(layout_names=['520-2-KB', '660-LS'])
+        self.assertEqual(lpa.n_channels, 2)
+        self.assertEqual(lpa.n_rows, 4)
+        self.assertEqual(lpa.n_cols, 6)
+        self.assertIsInstance(lpa.led_sets[0], lpaprogram.LEDSet)
+        self.assertIsInstance(lpa.led_sets[1], lpaprogram.LEDSet)
+        self.assertEqual(lpa.led_sets[0].name, 'EO_12')
+        self.assertEqual(lpa.led_sets[1].name, 'EO_20')
+
+    def test_create_lpa_no_led_set(self):
+        lpa = lpaprogram.LPA(name='Jennie')
+        self.assertEqual(lpa.name, 'Jennie')
+        self.assertEqual(lpa.n_channels, 2)
+        self.assertEqual(lpa.n_rows, 4)
+        self.assertEqual(lpa.n_cols, 6)
+        self.assertIsNone(lpa.led_sets)
+
+    def test_create_lpa_no_led_set_and_call_functions(self):
+        lpa = lpaprogram.LPA(name='Jennie')
+        # The following function calls should not raise exceptions
+        lpa.set_all_dc(10)
+        lpa.set_all_gcal(200)
+        lpa.set_n_steps(1000)
+        lpa.set_timecourse_staggered(
+            intensity=self.timecourse_ch0,
+            intensity_pre=self.timecourse_pre_ch0,
+            sampling_steps=self.timecourse_sampling_steps_ch0,
+            channel=0)
+        lpa.load_dc(self.dc_file_to_load)
+        lpa.load_dc(self.gcal_file_to_load)
+        lpa.save_dc(os.path.join(self.temp_dir, 'dc_no_led_set.txt'))
+        lpa.save_gcal(os.path.join(self.temp_dir, 'gcal_no_led_set.txt'))
+        # The following function calls should raise exceptions
+        exception_msg = "LED sets have not been loaded. Call load_led_sets()."
+        six.assertRaisesRegex(
+            self,
+            Exception,
+            exception_msg,
+            lpa.load_lpf,
+            self.lpf_file_to_load)
+        six.assertRaisesRegex(
+            self,
+            Exception,
+            exception_msg,
+            lpa.load_files,
+            self.folder_to_load)
+        six.assertRaisesRegex(
+            self,
+            Exception,
+            exception_msg,
+            lpa.save_lpf,
+            os.path.join(self.temp_dir, 'program_no_led_set.lpf'))
+        six.assertRaisesRegex(
+            self,
+            Exception,
+            exception_msg,
+            lpa.save_files,
+            self.temp_dir)
+        six.assertRaisesRegex(
+            self,
+            Exception,
+            exception_msg,
+            lpa.discretize_intensity)
+        six.assertRaisesRegex(
+            self,
+            Exception,
+            exception_msg,
+            lpa.optimize_dc,
+            channel=0)
+
+    def test_create_lpa_load_led_set(self):
+        lpa = lpaprogram.LPA(name='Jennie')
+        lpa.load_led_sets(led_set_names=['EO_12', 'EO_20'])
+        self.assertEqual(lpa.n_channels, 2)
+        self.assertEqual(lpa.n_rows, 4)
+        self.assertEqual(lpa.n_cols, 6)
+        self.assertIsInstance(lpa.led_sets[0], lpaprogram.LEDSet)
+        self.assertIsInstance(lpa.led_sets[1], lpaprogram.LEDSet)
+
+    def test_create_lpa_load_one_led_set(self):
+        lpa = lpaprogram.LPA(name='Jennie')
+        lpa.load_led_sets(led_set_names=['EO_12', None])
+        self.assertEqual(lpa.n_channels, 2)
+        self.assertEqual(lpa.n_rows, 4)
+        self.assertEqual(lpa.n_cols, 6)
+        self.assertIsInstance(lpa.led_sets[0], lpaprogram.LEDSet)
+        self.assertIsNone(lpa.led_sets[1])
+
+    def test_create_lpa_load_layouts(self):
+        lpa = lpaprogram.LPA(name='Jennie')
+        lpa.load_led_sets(layout_names=['520-2-KB', '660-LS'])
+        self.assertEqual(lpa.n_channels, 2)
+        self.assertEqual(lpa.n_rows, 4)
+        self.assertEqual(lpa.n_cols, 6)
+        self.assertIsInstance(lpa.led_sets[0], lpaprogram.LEDSet)
+        self.assertIsInstance(lpa.led_sets[1], lpaprogram.LEDSet)
+        self.assertEqual(lpa.led_sets[0].name, 'EO_12')
+        self.assertEqual(lpa.led_sets[1].name, 'EO_20')
+
+    def test_create_lpa_load_one_layout(self):
+        lpa = lpaprogram.LPA(name='Jennie')
+        lpa.load_led_sets(layout_names=['520-2-KB', None])
+        self.assertEqual(lpa.n_channels, 2)
+        self.assertEqual(lpa.n_rows, 4)
+        self.assertEqual(lpa.n_cols, 6)
+        self.assertIsInstance(lpa.led_sets[0], lpaprogram.LEDSet)
+        self.assertEqual(lpa.led_sets[0].name, 'EO_12')
+        self.assertIsNone(lpa.led_sets[1])
+
     def test_create_lpa_led_set(self):
         lpa = lpaprogram.LPA(name='Jennie', led_set_names=['EO_12', 'EO_20'])
         self.assertEqual(lpa.n_channels, 2)
@@ -517,6 +774,14 @@ class TestLPA(unittest.TestCase):
         self.assertEqual(lpa.n_cols, 6)
         self.assertIsInstance(lpa.led_sets[0], lpaprogram.LEDSet)
         self.assertIsInstance(lpa.led_sets[1], lpaprogram.LEDSet)
+
+    def test_create_lpa_one_led_set(self):
+        lpa = lpaprogram.LPA(name='Jennie', led_set_names=['EO_12', None])
+        self.assertEqual(lpa.n_channels, 2)
+        self.assertEqual(lpa.n_rows, 4)
+        self.assertEqual(lpa.n_cols, 6)
+        self.assertIsInstance(lpa.led_sets[0], lpaprogram.LEDSet)
+        self.assertIsNone(lpa.led_sets[1])
 
     def test_create_lpa_layout(self):
         lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
@@ -527,6 +792,15 @@ class TestLPA(unittest.TestCase):
         self.assertIsInstance(lpa.led_sets[1], lpaprogram.LEDSet)
         self.assertEqual(lpa.led_sets[0].name, 'EO_12')
         self.assertEqual(lpa.led_sets[1].name, 'EO_20')
+
+    def test_create_lpa_one_layout(self):
+        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', None])
+        self.assertEqual(lpa.n_channels, 2)
+        self.assertEqual(lpa.n_rows, 4)
+        self.assertEqual(lpa.n_cols, 6)
+        self.assertIsInstance(lpa.led_sets[0], lpaprogram.LEDSet)
+        self.assertEqual(lpa.led_sets[0].name, 'EO_12')
+        self.assertIsNone(lpa.led_sets[1])
 
     def test_set_all_dc_all(self):
         lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
@@ -665,6 +939,33 @@ class TestLPA(unittest.TestCase):
                                           self.intensity_to_load_exp,
                                           decimal=12)
 
+    def test_load_lpf_one_led_set(self):
+        # Create object
+        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', None])
+        lpa.dc = self.dc_to_load_exp
+        lpa.gcal = self.gcal_to_load_exp
+        # Initialize a different step size
+        lpa.step_size = 60000
+        # Load .lpf file
+        with warnings.catch_warnings(record=True) as w:
+            # Cause all warnings to always be triggered.
+            warnings.simplefilter("always")
+            # Attempt to load lpf
+            lpa.load_lpf(self.lpf_file_to_load)
+            # Verify warning info
+            self.assertEqual(len(w), 1)
+            self.assertIn("No LEDSet loaded for channel 1. Will read all " + \
+                "intensities as zero.", str(w[0].message))
+        # Test on step duration
+        self.assertEqual(lpa.step_size, self.step_size_to_load_exp)
+        # Tests on intesity array
+        intensity_to_load_exp = self.intensity_to_load_exp.copy()
+        intensity_to_load_exp[:,:,:,1] = 0
+        self.assertEqual(lpa.intensity.shape, intensity_to_load_exp.shape)
+        numpy.testing.assert_almost_equal(lpa.intensity,
+                                          intensity_to_load_exp,
+                                          decimal=12)
+
     def test_load_files(self):
         # Create object and attempt to load
         lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
@@ -717,6 +1018,34 @@ class TestLPA(unittest.TestCase):
         self.assertEqual(lpf.step_size, self.step_size_to_save_exp)
         self.assertEqual(lpf.n_steps, self.n_steps_to_save_exp)
         numpy.testing.assert_array_equal(lpf.grayscale, self.gs_to_save_exp)
+
+    def test_save_lpf_one_led_set(self):
+        # Create object
+        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', None])
+        lpa.dc = self.dc_to_save
+        lpa.gcal = self.gcal_to_save
+        lpa.intensity = self.intensity_to_save
+        lpa.step_size = self.step_size_to_save
+        # Save
+        with warnings.catch_warnings(record=True) as w:
+            # Cause all warnings to always be triggered.
+            warnings.simplefilter("always")
+            # Attempt to save lpf
+            lpa.save_lpf(os.path.join(self.temp_dir, 'program.lpf'))
+            # Verify warning info
+            self.assertEqual(len(w), 1)
+            self.assertIn("No LEDSet loaded for channel 1. Will write all " + \
+                "grayscale values as zero.", str(w[0].message))
+        # Load file and compare with expected contents
+        lpf_file_name = os.path.join(self.temp_dir, 'program.lpf')
+        lpf = lpaprogram.LPF(lpf_file_name)
+        self.assertEqual(lpf.file_version, self.file_version_to_save_exp)
+        self.assertEqual(lpf.n_channels, self.n_channels_to_save_exp)
+        self.assertEqual(lpf.step_size, self.step_size_to_save_exp)
+        self.assertEqual(lpf.n_steps, self.n_steps_to_save_exp)
+        gs_to_save_exp = self.gs_to_save_exp.copy()
+        gs_to_save_exp[:,1::2] = 0
+        numpy.testing.assert_array_equal(lpf.grayscale, gs_to_save_exp)
 
     def test_save_files(self):
         # Create object
@@ -849,6 +1178,44 @@ class TestLPA(unittest.TestCase):
                                               self.discretize_intensity_exp_ch1,
                                               decimal=12)
 
+    def test_discretize_intensity_one_led_set(self):
+        # Create object
+        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', None])
+        # Set dcs and gcals
+        lpa.set_all_dc(8, channel=0)
+        lpa.dc[3, 5, 0] = 9
+        lpa.set_all_gcal(225, channel=0)
+        lpa.set_all_dc(7, channel=1)
+        lpa.set_all_gcal(255, channel=1)
+        # Set intensities
+        intensity_ch0 = numpy.append([0], numpy.logspace(numpy.log10(0.02),
+                                                         numpy.log10(50),
+                                                         23))
+        intensity_ch0.resize(4, 6)
+        lpa.intensity[0, :, :, 0] = intensity_ch0
+        lpa.intensity[0, :, :, 1] = 20
+        # Extend to 10 timesteps
+        lpa.set_n_steps(10)
+        # Discretize
+        with warnings.catch_warnings(record=True) as w:
+            # Cause all warnings to always be triggered.
+            warnings.simplefilter("always")
+            # Attempt to discretize intensities
+            lpa.discretize_intensity()
+            # Verify warning info
+            self.assertEqual(len(w), 1)
+            self.assertIn("No LEDSet loaded for channel 1. Will discretize " +\
+                "all intensities to zero.", str(w[0].message))
+
+        # Test
+        for step in range(lpa.intensity.shape[0]):
+            numpy.testing.assert_almost_equal(lpa.intensity[step,:,:,0],
+                                              self.discretize_intensity_exp_ch0,
+                                              decimal=12)
+            numpy.testing.assert_almost_equal(lpa.intensity[step,:,:,1],
+                                              0,
+                                              decimal=12)
+
     def test_optimize_dc_1(self):
         # Create object
         lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
@@ -903,3 +1270,29 @@ class TestLPA(unittest.TestCase):
         # Test
         numpy.testing.assert_array_equal(lpa.dc[:,:,0], 8)
         numpy.testing.assert_array_equal(lpa.dc[:,:,1], 10)
+
+    def test_optimize_dc_one_led_set(self):
+        # Create object
+        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', None])
+        # Set dcs and gcals
+        lpa.set_all_dc(8, channel=0)
+        lpa.set_all_gcal(225, channel=0)
+        lpa.set_all_dc(7, channel=1)
+        lpa.set_all_gcal(255, channel=1)
+        # Extend to 10 timesteps
+        lpa.set_n_steps(10)
+        # Set intensities
+        lpa.intensity[3, :, :, 1] = 30
+        # Optimize dcs for channel 1
+        with warnings.catch_warnings(record=True) as w:
+            # Cause all warnings to always be triggered.
+            warnings.simplefilter("always")
+            # Attempt to optimize dc
+            lpa.optimize_dc(channel=1, uniform=True)
+            # Verify warning info
+            self.assertEqual(len(w), 1)
+            self.assertEqual("No LEDSet loaded for channel 1. DC optimization"+\
+                " not performed.", str(w[0].message))
+        # Test
+        numpy.testing.assert_array_equal(lpa.dc[:,:,0], 8)
+        numpy.testing.assert_array_equal(lpa.dc[:,:,1], 7)
