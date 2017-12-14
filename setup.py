@@ -90,7 +90,7 @@ setup(
     install_requires=['numpy>=1.12.1',
                       'pandas>=0.20.2',
                       'matplotlib>=2.0.0',
-                      'six>=1.10.0'
+                      'six>=1.10.0',
                       'xlrd>=1.0.0'],
 
     # List additional groups of dependencies here (e.g. development
