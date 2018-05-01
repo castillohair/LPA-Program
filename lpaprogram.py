@@ -257,8 +257,13 @@ class LEDSet(object):
         # Get intensity at measured conditions
         measured_dc = led_data['DC'].values.astype(float)
         measured_gcal = led_data['GS Cal'].values.astype(float)
-        measured_intensity = led_data['Intensity (umol/m2/s)']\
-            .values.astype(float)
+        # Intensity units can be expressed as µmol/(m^2*s) or umol/m2/s
+        if 'Intensity (µmol/(m^2*s))' in led_data.columns:
+            measured_intensity = led_data['Intensity (µmol/(m^2*s))']\
+                .values.astype(float)
+        else:
+            measured_intensity = led_data['Intensity (umol/m2/s)']\
+                .values.astype(float)
         # Calculate intensity
         dc = numpy.array(dc)
         gcal = numpy.array(gcal)
@@ -315,8 +320,13 @@ class LEDSet(object):
         # Get intensity at measured conditions
         measured_dc = led_data['DC'].values.astype(float)
         measured_gcal = led_data['GS Cal'].values.astype(float)
-        measured_intensity = led_data['Intensity (umol/m2/s)']\
-            .values.astype(float)
+        # Intensity units can be expressed as µmol/(m^2*s) or umol/m2/s
+        if 'Intensity (µmol/(m^2*s))' in led_data.columns:
+            measured_intensity = led_data['Intensity (µmol/(m^2*s))']\
+                .values.astype(float)
+        else:
+            measured_intensity = led_data['Intensity (umol/m2/s)']\
+                .values.astype(float)
         # Calculate grayscale value
         dc = numpy.array(dc)
         gcal = numpy.array(gcal)
@@ -428,8 +438,13 @@ class LEDSet(object):
         # Get intensity at measured conditions
         measured_dc = led_data['DC'].values.astype(float)
         measured_gcal = led_data['GS Cal'].values.astype(float)
-        measured_intensity = led_data['Intensity (umol/m2/s)']\
-            .values.astype(float)
+        # Intensity units can be expressed as µmol/(m^2*s) or umol/m2/s
+        if 'Intensity (µmol/(m^2*s))' in led_data.columns:
+            measured_intensity = led_data['Intensity (µmol/(m^2*s))']\
+                .values.astype(float)
+        else:
+            measured_intensity = led_data['Intensity (umol/m2/s)']\
+                .values.astype(float)
         # Calculate dc value
         # We calculate the dot correction value required to achieve the desired
         # intensity with 4095 grayscale, and then round up.
