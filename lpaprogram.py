@@ -687,8 +687,8 @@ class LPA(object):
         value : int
             Desired grayscale calibration value, from 0 to 255.
         channel : int, optional
-            Channel for which the specified dot correction value should be
-            assigned. If None, assign to all channels.
+            Channel for which the specified grayscale calibration value
+            should be assigned. If None, assign to all channels.
 
         """
         if channel is None:
