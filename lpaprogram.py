@@ -617,7 +617,7 @@ class LPA(object):
                     led_set_names.append(None)
                     continue
                 # Get data for corresponding row in layout table
-                channel = ['Top', 'Bot'][i]
+                channel = i + 1
                 layout_row = layout_table[(layout_table['LPA']==self.name) &\
                                           (layout_table['Channel']==channel) &\
                                           (layout_table['Layout']==layout)]
@@ -631,7 +631,7 @@ class LPA(object):
                         " Channel {}, Layout {} in {}".format(
                             self.name, channel, layout, LED_LAYOUT_FILENAME))
                 # Accumulate
-                led_set_names.append(layout_row.iloc[0]['Archive ID'])
+                led_set_names.append(layout_row.iloc[0]['LED Set'])
 
         # Initialize led sets
         self.led_sets = []
