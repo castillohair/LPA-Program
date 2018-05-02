@@ -576,6 +576,104 @@ class LPA(object):
                                       self.n_cols,
                                       self.n_channels))
 
+    @property
+    def grayscale(self):
+        """
+        Grayscale values.
+
+        Grayscale values are calculated from the intensity array using the
+        associated LEDSet objects, and the dc and gcal arrays. Setting this
+        property populates the intensity array using dc and gcal values.
+
+        Raises
+        ------
+        Exception
+            If LED set information has not been loaded.
+
+        """
+        # Check that LED set information has been loaded
+        if self.led_sets is None:
+            raise Exception("LED sets have not been loaded. "
+                "Call load_led_sets().")
+        # Throw warning if one of the led sets is not present
+        for channel, led_set in enumerate(self.led_sets):
+            if led_set is None:
+                warnings.warn("No LEDSet loaded for channel "
+                    "{}. Will write all grayscale values as zero.".format(
+                        channel))
+
+        n_steps = self.intensity.shape[0]
+        # Initialize grayscale array
+        gs = numpy.zeros((n_steps,
+                          self.n_rows*self.n_cols,
+                          self.n_channels), dtype=int)
+        # Convert intensities to grayscale values
+        for step in range(n_steps):
+            for channel in range(self.n_channels):
+                if self.led_sets[channel] is not None:
+                    try:
+                        gs[step, :, channel] = self.led_sets[channel].\
+                            get_grayscale(
+                                row=None,
+                                col=None,
+                                intensity=self.intensity[step, :, :, channel].\
+                                    flatten(),
+                                dc=self.dc[:,:,channel].flatten(),
+                                gcal=self.gcal[:,:,channel].flatten(),
+                                )
+                    except ValueError as e:
+                        e.args = ("on LPA {}, step {}, channel {}: ".format(
+                            self.name,
+                            step,
+                            channel) + e.args[0],)
+                        raise
+
+        return gs
+
+    @grayscale.setter
+    def grayscale(self, gs):
+        # Check that LED set information has been loaded
+        if self.led_sets is None:
+            raise Exception("LED sets have not been loaded. "
+                "Call load_led_sets().")
+        # Throw warning if one of the led sets is not present
+        for channel, led_set in enumerate(self.led_sets):
+            if led_set is None:
+                warnings.warn("No LEDSet loaded for channel "
+                    "{}. Will read all intensities as zero.".format(channel))
+
+        # Check correct format of new grayscale values
+        if not isinstance(gs, numpy.ndarray):
+            raise ValueError("grayscale should be array")
+        if len(gs.shape)!=4:
+            raise ValueError("grayscale should be a 4D array")
+        if (gs.shape[1]!=self.n_rows) or \
+                (gs.shape[2]!=self.n_cols) or \
+                (gs.shape[3]!=self.n_channels):
+            raise ValueError("grayscale dimensions are not appropriate")
+        # Transform to unsigned integer
+        gs = gs.astype('uint16')
+        # Check that all values are lower than 4095
+        if numpy.any(gs>4095):
+            raise ValueError("grayscale values should not be greater than 4095")
+
+        # Populate intensity array
+        self.set_n_steps(gs.shape[0])
+        for step in range(gs.shape[0]):
+            for channel in range(self.n_channels):
+                if self.led_sets[channel] is None:
+                    # Set intensity as zero
+                    intensity_sch = numpy.zeros(self.n_rows*self.n_cols)
+                else:
+                    # Get intensities from LED set
+                    intensity_sch = self.led_sets[channel].get_intensity(
+                        gs=gs[step,:,:,channel].flatten(),
+                        dc=self.dc[:,:,channel].flatten(),
+                        gcal=self.gcal[:,:,channel].flatten())
+                # Resize and add to intensity array
+                intensity_sch.resize(self.n_rows, self.n_cols)
+                self.intensity[step, :, :, channel] = intensity_sch
+
     def load_led_sets(self, led_set_names=None, layout_names=None):
         """
         Load data from specified LED sets.
@@ -780,21 +878,7 @@ class LPA(object):
         file_name : str
             Name of the file to load.
 
-        Raises
-        ------
-        Exception
-            If LED set information has not been loaded.
-
         """
-        # Check that LED set information has been loaded
-        if self.led_sets is None:
-            raise Exception("LED sets have not been loaded. "
-                "Call load_led_sets().")
-        # Throw warning if one of the led sets is not present
-        for channel, led_set in enumerate(self.led_sets):
-            if led_set is None:
-                warnings.warn("No LEDSet loaded for channel "
-                    "{}. Will read all intensities as zero.".format(channel))
         # Load light program file
         lpf = LPF(file_name)
         # Check dimensions
@@ -802,25 +886,10 @@ class LPA(object):
             raise ValueError("unexpected number of channels in light program "
                 "file")
         # Populate intensity array
-        self.set_n_steps(lpf.n_steps)
-        gs = numpy.resize(lpf.grayscale, (lpf.n_steps,
-                                          self.n_rows,
-                                          self.n_cols,
-                                          self.n_channels))
-        for step in range(lpf.n_steps):
-            for channel in range(self.n_channels):
-                if self.led_sets[channel] is None:
-                    # Set intensity as zero
-                    intensity_sch = numpy.zeros(self.n_rows*self.n_cols)
-                else:
-                    # Get intensities from LED set
-                    intensity_sch = self.led_sets[channel].get_intensity(
-                        gs=gs[step,:,:,channel].flatten(),
-                        dc=self.dc[:,:,channel].flatten(),
-                        gcal=self.gcal[:,:,channel].flatten())
-                # Resize and add to intensity array
-                intensity_sch.resize(self.n_rows, self.n_cols)
-                self.intensity[step, :, :, channel] = intensity_sch
+        self.grayscale = numpy.resize(lpf.grayscale, (lpf.n_steps,
+                                      self.n_rows,
+                                      self.n_cols,
+                                      self.n_channels))
         # Set step size
         self.step_size = lpf.step_size
 
@@ -901,48 +970,11 @@ class LPA(object):
         file_name : str
             Name of the file to save.
 
-        Raises
-        ------
-        Exception
-            If LED set information has not been loaded.
-
         """
-        # Check that LED set information has been loaded
-        if self.led_sets is None:
-            raise Exception("LED sets have not been loaded. "
-                "Call load_led_sets().")
-        # Throw warning if one of the led sets is not present
-        for channel, led_set in enumerate(self.led_sets):
-            if led_set is None:
-                warnings.warn("No LEDSet loaded for channel "
-                    "{}. Will write all grayscale values as zero.".format(
-                        channel))
-
-        n_steps = self.intensity.shape[0]
-        # Initialize grayscale array
-        gs = numpy.zeros((n_steps,
-                          self.n_rows*self.n_cols,
-                          self.n_channels), dtype=int)
-        # Convert intensities to grayscale values
-        for step in range(n_steps):
-            for channel in range(self.n_channels):
-                if self.led_sets[channel] is not None:
-                    try:
-                        gs[step, :, channel] = self.led_sets[channel].\
-                            get_grayscale(
-                                row=None,
-                                col=None,
-                                intensity=self.intensity[step, :, :, channel].\
-                                    flatten(),
-                                dc=self.dc[:,:,channel].flatten(),
-                                gcal=self.gcal[:,:,channel].flatten(),
-                                )
-                    except ValueError as e:
-                        e.args = ("on step {}, channel {}: ".format(
-                            step,
-                            channel) + e.args[0],)
-                        raise
+        # Get grayscale values from grayscale property
+        gs = self.grayscale
         # Flatten dimension corresponding to channels
+        n_steps = self.intensity.shape[0]
         gs.resize(n_steps, self.n_rows*self.n_cols*self.n_channels)
         # Create LPF object and save
         lpf = LPF()
