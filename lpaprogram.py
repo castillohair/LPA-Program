@@ -579,11 +579,13 @@ class LPA(object):
     @property
     def grayscale(self):
         """
-        Grayscale values.
+        Grayscale values corresponding to `intensity`.
 
         Grayscale values are calculated from the intensity array using the
         associated LEDSet objects, and the dc and gcal arrays. Setting this
         property populates the intensity array using dc and gcal values.
+        `grayscale` is a , (n_steps, n_rows, n_cols, n_channels)-sized
+        array.
 
         Raises
         ------
@@ -605,22 +607,25 @@ class LPA(object):
         n_steps = self.intensity.shape[0]
         # Initialize grayscale array
         gs = numpy.zeros((n_steps,
-                          self.n_rows*self.n_cols,
+                          self.n_rows,
+                          self.n_cols,
                           self.n_channels), dtype=int)
         # Convert intensities to grayscale values
         for step in range(n_steps):
             for channel in range(self.n_channels):
                 if self.led_sets[channel] is not None:
                     try:
-                        gs[step, :, channel] = self.led_sets[channel].\
-                            get_grayscale(
-                                row=None,
-                                col=None,
-                                intensity=self.intensity[step, :, :, channel].\
-                                    flatten(),
-                                dc=self.dc[:,:,channel].flatten(),
-                                gcal=self.gcal[:,:,channel].flatten(),
-                                )
+                        gs[step, :, :, channel] = numpy.resize(
+                            self.led_sets[channel].\
+                                get_grayscale(
+                                    row=None,
+                                    col=None,
+                                    intensity=self.intensity[step,:,:,channel].\
+                                        flatten(),
+                                    dc=self.dc[:,:,channel].flatten(),
+                                    gcal=self.gcal[:,:,channel].flatten(),
+                                    ),
+                            (self.n_rows, self.n_cols))
                     except ValueError as e:
                         e.args = ("on LPA {}, step {}, channel {}: ".format(
                             self.name,
@@ -885,11 +890,12 @@ class LPA(object):
         if lpf.n_channels != self.n_rows*self.n_cols*self.n_channels:
             raise ValueError("unexpected number of channels in light program "
                 "file")
-        # Populate intensity array
+        # Populate grayscale array
+        # This automatically updates the intensity array.
         self.grayscale = numpy.resize(lpf.grayscale, (lpf.n_steps,
-                                      self.n_rows,
-                                      self.n_cols,
-                                      self.n_channels))
+                                                      self.n_rows,
+                                                      self.n_cols,
+                                                      self.n_channels))
         # Set step size
         self.step_size = lpf.step_size
 
