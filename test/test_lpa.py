@@ -778,6 +778,7 @@ class TestLPA(unittest.TestCase):
         self.assertEqual(lpa.n_channels, 2)
         self.assertEqual(lpa.n_rows, 4)
         self.assertEqual(lpa.n_cols, 6)
+        self.assertEqual(lpa.dc_lock, True)
         self.assertIsNone(lpa.led_sets)
 
     def test_create_lpa_no_name_with_led_sets(self):
@@ -788,8 +789,25 @@ class TestLPA(unittest.TestCase):
         with six.assertRaisesRegex(self, Exception, "name attribute must be set"):
             lpa = lpaprogram.LPA(layout_names=['520-2-KB', '660-LS'])
 
+    def test_create_lpa_dc_lock(self):
+        lpa = lpaprogram.LPA(name='Jennie',
+                             layout_names=['520-2-KB', '660-LS'])
+        # Direct assignment should result in exception
+        with six.assertRaisesRegex(self, TypeError, "dc attribute is locked"):
+            lpa.dc = numpy.zeros(48)
+        # While modifying dc doesn't raise an exception, it should not work
+        lpa.dc[:,:,0] = numpy.ones((4,6))*10
+        numpy.testing.assert_array_equal(lpa.dc, self.default_dc_full)
+        # The following functions should raise exceptions
+        with six.assertRaisesRegex(self, TypeError, "dc attribute is locked"):
+            lpa.set_all_dc(10)
+        with six.assertRaisesRegex(self, TypeError, "dc attribute is locked"):
+            lpa.set_all_dc(10, channel=0)
+        with six.assertRaisesRegex(self, TypeError, "dc attribute is locked"):
+            lpa.optimize_dc(channel=0)
+
     def test_create_lpa_no_name_and_call_functions(self):
-        lpa = lpaprogram.LPA()
+        lpa = lpaprogram.LPA(dc_lock=False)
         # The following function calls should not raise exceptions
         lpa.set_all_dc(10)
         lpa.set_all_gcal(200)
@@ -852,7 +870,7 @@ class TestLPA(unittest.TestCase):
             channel=0)
 
     def test_create_lpa_set_name_and_call_functions(self):
-        lpa = lpaprogram.LPA()
+        lpa = lpaprogram.LPA(dc_lock=False)
         lpa.name = 'Jennie'
         # The following function calls should not raise exceptions
         lpa.set_all_dc(10)
@@ -936,7 +954,7 @@ class TestLPA(unittest.TestCase):
         self.assertIsNone(lpa.led_sets)
 
     def test_create_lpa_no_led_set_and_call_functions(self):
-        lpa = lpaprogram.LPA(name='Jennie')
+        lpa = lpaprogram.LPA(name='Jennie', dc_lock=False)
         # The following function calls should not raise exceptions
         lpa.set_all_dc(10)
         lpa.set_all_gcal(200)
@@ -1083,7 +1101,9 @@ class TestLPA(unittest.TestCase):
         numpy.testing.assert_array_equal(lpa.gcal, self.default_gcal_ch1)
 
     def test_set_all_dc_all(self):
-        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie',
+                             layout_names=['520-2-KB', '660-LS'],
+                             dc_lock=False)
         # Check initial size
         self.assertEqual(lpa.dc.shape, (4, 6, 2))
         # Change all and check
@@ -1096,7 +1116,9 @@ class TestLPA(unittest.TestCase):
         numpy.testing.assert_array_equal(lpa.dc, 3)
 
     def test_set_all_dc_ch1(self):
-        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie',
+                             layout_names=['520-2-KB', '660-LS'],
+                             dc_lock=False)
         # Check initial size
         self.assertEqual(lpa.dc.shape, (4, 6, 2))
         # Change all and check
@@ -1110,7 +1132,9 @@ class TestLPA(unittest.TestCase):
         numpy.testing.assert_array_equal(lpa.dc[:,:,1], 0)
 
     def test_set_all_dc_ch2(self):
-        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie',
+                             layout_names=['520-2-KB', '660-LS'],
+                             dc_lock=False)
         # Check initial size
         self.assertEqual(lpa.dc.shape, (4, 6, 2))
         # Change all and check
@@ -1165,7 +1189,9 @@ class TestLPA(unittest.TestCase):
         numpy.testing.assert_array_equal(lpa.gcal[:,:,1], 100)
 
     def test_set_grayscale(self):
-        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie',
+                             layout_names=['520-2-KB', '660-LS'],
+                             dc_lock=False)
         # Set all dc and grayscale calibration
         lpa.set_all_dc(self.dc_ch1_gs_prop, channel=0)
         lpa.set_all_dc(self.dc_ch2_gs_prop, channel=1)
@@ -1177,7 +1203,9 @@ class TestLPA(unittest.TestCase):
         numpy.testing.assert_almost_equal(lpa.intensity, self.intensity_gs_prop)
 
     def test_get_grayscale(self):
-        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie',
+                             layout_names=['520-2-KB', '660-LS'],
+                             dc_lock=False)
         # Set all dc and grayscale calibration
         lpa.set_all_dc(self.dc_ch1_gs_prop, channel=0)
         lpa.set_all_dc(self.dc_ch2_gs_prop, channel=1)
@@ -1227,7 +1255,9 @@ class TestLPA(unittest.TestCase):
 
     def test_load_lpf(self):
         # Create object
-        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie',
+                             layout_names=['520-2-KB', '660-LS'],
+                             dc_lock=False)
         lpa.dc = self.dc_to_load_exp
         lpa.gcal = self.gcal_to_load_exp
         # Initialize a different step size
@@ -1244,7 +1274,9 @@ class TestLPA(unittest.TestCase):
 
     def test_load_lpf_one_led_set(self):
         # Create object
-        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', None])
+        lpa = lpaprogram.LPA(name='Jennie',
+                             layout_names=['520-2-KB', None],
+                             dc_lock=False)
         lpa.dc = self.dc_to_load_exp
         lpa.gcal = self.gcal_to_load_exp
         # Initialize a different step size
@@ -1285,9 +1317,12 @@ class TestLPA(unittest.TestCase):
                                           decimal=12)
 
     def test_save_dc(self):
-        # Create object and attempt to save
-        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        # Create object
+        lpa = lpaprogram.LPA(name='Jennie',
+                             layout_names=['520-2-KB', '660-LS'],
+                             dc_lock=False)
         lpa.dc = self.dc_to_save
+        # Attempt to save
         lpa.save_dc(os.path.join(self.temp_dir, 'dc.txt'))
         # Load file and compare contents
         with open(os.path.join(self.temp_dir, 'dc.txt'), 'r') as myfile:
@@ -1296,7 +1331,9 @@ class TestLPA(unittest.TestCase):
 
     def test_save_gcal(self):
         # Create object and attempt to save
-        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie',
+                             layout_names=['520-2-KB', '660-LS'],
+                             dc_lock=False)
         lpa.gcal = self.gcal_to_save
         lpa.save_gcal(os.path.join(self.temp_dir, 'gcal.txt'))
         # Load file and compare contents
@@ -1306,7 +1343,9 @@ class TestLPA(unittest.TestCase):
 
     def test_save_lpf(self):
         # Create object
-        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie',
+                             layout_names=['520-2-KB', '660-LS'],
+                             dc_lock=False)
         lpa.dc = self.dc_to_save
         lpa.gcal = self.gcal_to_save
         lpa.intensity = self.intensity_to_save
@@ -1324,7 +1363,9 @@ class TestLPA(unittest.TestCase):
 
     def test_save_lpf_one_led_set(self):
         # Create object
-        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', None])
+        lpa = lpaprogram.LPA(name='Jennie',
+                             layout_names=['520-2-KB', None],
+                             dc_lock=False)
         lpa.dc = self.dc_to_save
         lpa.gcal = self.gcal_to_save
         lpa.intensity = self.intensity_to_save
@@ -1352,7 +1393,9 @@ class TestLPA(unittest.TestCase):
 
     def test_save_files(self):
         # Create object
-        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie',
+                             layout_names=['520-2-KB', '660-LS'],
+                             dc_lock=False)
         lpa.dc = self.dc_to_save
         lpa.gcal = self.gcal_to_save
         lpa.intensity = self.intensity_to_save
@@ -1454,7 +1497,9 @@ class TestLPA(unittest.TestCase):
 
     def test_discretize_intensity(self):
         # Create object
-        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie',
+                             layout_names=['520-2-KB', '660-LS'],
+                             dc_lock=False)
         # Set dcs and gcals
         lpa.set_all_dc(8, channel=0)
         lpa.dc[3, 5, 0] = 9
@@ -1483,7 +1528,9 @@ class TestLPA(unittest.TestCase):
 
     def test_discretize_intensity_one_led_set(self):
         # Create object
-        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', None])
+        lpa = lpaprogram.LPA(name='Jennie',
+                             layout_names=['520-2-KB', None],
+                             dc_lock=False)
         # Set dcs and gcals
         lpa.set_all_dc(8, channel=0)
         lpa.dc[3, 5, 0] = 9
@@ -1521,7 +1568,9 @@ class TestLPA(unittest.TestCase):
 
     def test_optimize_dc_1(self):
         # Create object
-        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie',
+                             layout_names=['520-2-KB', '660-LS'],
+                             dc_lock=False)
         # Set dcs and gcals
         lpa.set_all_dc(8, channel=0)
         lpa.set_all_gcal(225, channel=0)
@@ -1539,7 +1588,9 @@ class TestLPA(unittest.TestCase):
 
     def test_optimize_dc_2(self):
         # Create object
-        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie',
+                             layout_names=['520-2-KB', '660-LS'],
+                             dc_lock=False)
         # Set dcs and gcals
         lpa.set_all_dc(8, channel=0)
         lpa.set_all_gcal(225, channel=0)
@@ -1558,7 +1609,9 @@ class TestLPA(unittest.TestCase):
 
     def test_optimize_dc_3(self):
         # Create object
-        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        lpa = lpaprogram.LPA(name='Jennie',
+                             layout_names=['520-2-KB', '660-LS'],
+                             dc_lock=False)
         # Set dcs and gcals
         lpa.set_all_dc(8, channel=0)
         lpa.set_all_gcal(225, channel=0)
@@ -1576,7 +1629,9 @@ class TestLPA(unittest.TestCase):
 
     def test_optimize_dc_one_led_set(self):
         # Create object
-        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', None])
+        lpa = lpaprogram.LPA(name='Jennie',
+                             layout_names=['520-2-KB', None],
+                             dc_lock=False)
         # Set dcs and gcals
         lpa.set_all_dc(8, channel=0)
         lpa.set_all_gcal(225, channel=0)

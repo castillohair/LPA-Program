@@ -538,6 +538,13 @@ class LPA(object):
     file named ``LED_LAYOUT_FILENAME`` contained in
     ``LED_CALIBRATION_PATH``.
 
+    Note that intensity calculations with dot correction values different
+    from the ones specified in the calibration data files are only
+    approximate, and therefore it is recommended to maintain the original
+    dot correction values. A `dc_lock` attribute, activated by default,
+    prevents direct modification of the dot correction initially loaded
+    from calibration files.
+
     Properties
     ----------
     name : str or None, optional
@@ -549,6 +556,8 @@ class LPA(object):
         Number of cols in the LPA.
     n_channels : int, optional
         Number of channels (LEDs per well) in the LPA.
+    dc_lock : bool, optional
+        Whether to allow direct modification of dot correction values.
     led_set_names : list, optional
         LED set names for each channel.
     layout_names : list, optional
@@ -567,11 +576,18 @@ class LPA(object):
         Number of cols in the LPA.
     n_channels : int
         Number of channels (LEDs per well) in the LPA.
+    dc_lock : bool, optional
+        Whether to allow direct modification of dot correction values. If
+        True, the `dc` attribute cannot be directly modified, and functions
+        ``set_all_dc()`` and ``optimize_dc()`` will raise a ``TypeError``
+        if called. Dot correction can then only be modified by loading
+        LED sets (calling ``load_led_sets()``) or loading a dot correction
+        file (calling ``load_dc()`` or ``load_files()``).
     step_size : int
         Duration of each time step in `intensity` array, in milliseconds.
     dc : array
         Array of size (n_rows, n_cols, n_channels) with dot correction
-        values.
+        values. Cannot be directly modified if `dc_lock` is True.
     gcal : array
         Array of size (n_rows, n_cols, n_channels) with grayscale
         calibration values.
@@ -585,6 +601,7 @@ class LPA(object):
                  n_rows=4,
                  n_cols=6,
                  n_channels=2,
+                 dc_lock=True,
                  led_set_names=None,
                  layout_names=None):
 
@@ -596,15 +613,18 @@ class LPA(object):
         self.n_cols = n_cols
         self.n_channels = n_channels
 
+        # Lock on dot correction values
+        self.dc_lock = dc_lock
+
         # Initialize led_sets list to None
         self.led_sets = None
 
         # Initialize step size in ms
         self.step_size = 1000
         # Initialize dc and gcal arrays
-        self.dc = numpy.zeros((self.n_rows,
-                               self.n_cols,
-                               self.n_channels), dtype=int)
+        self._dc = numpy.zeros((self.n_rows,
+                                self.n_cols,
+                                self.n_channels), dtype=int)
         self.gcal = numpy.ones((self.n_rows,
                                  self.n_cols,
                                  self.n_channels), dtype=int)*255
@@ -618,6 +638,30 @@ class LPA(object):
         # initialize LED sets
         if (layout_names is not None) or (led_set_names is not None):
             self.load_led_sets(led_set_names, layout_names)
+
+    @property
+    def dc(self):
+        """
+        Dot correction values.
+
+        This attribute can only be directly set if `dc_lock` is set to
+        False.
+
+        """
+        # If dc lock is active, return a copy. This will guarantee that
+        # statements like ``lpa.dc[:,:,0] = dc_new`` do not modify ``lpa.dc``.
+        # Otherwise, return ``_dc`` to allow for this type of modification.
+        if self.dc_lock:
+            return self._dc.copy()
+        else:
+            return self._dc
+
+    @dc.setter
+    def dc(self, dc_new):
+        if self.dc_lock:
+            raise TypeError("dc attribute is locked")
+        else:
+            self._dc = dc_new
 
     @property
     def grayscale(self):
@@ -825,9 +869,9 @@ class LPA(object):
                         "set {}".format(led_set.name))
 
         # Load dot correction and grayscale calibration from LED sets
-        self.dc = numpy.zeros((self.n_rows,
-                               self.n_cols,
-                               self.n_channels), dtype=int)
+        self._dc = numpy.zeros((self.n_rows,
+                                self.n_cols,
+                                self.n_channels), dtype=int)
         self.gcal = numpy.ones((self.n_rows,
                                  self.n_cols,
                                  self.n_channels), dtype=int)*255
@@ -837,7 +881,7 @@ class LPA(object):
             # Set dot correction from calibration data
             dc_channel = led_set.calibration_data['DC'].values
             dc_channel.resize((self.n_rows, self.n_cols))
-            self.dc[:,:,led_channel] = dc_channel
+            self._dc[:,:,led_channel] = dc_channel
             # Set grayscale calibration from calibration data
             gcal_channel = led_set.calibration_data['GS Cal'].values
             gcal_channel.resize((self.n_rows, self.n_cols))
@@ -855,7 +899,15 @@ class LPA(object):
             Channel for which the specified dot correction value should be
             assigned. If None, assign to all channels.
 
+        Raises
+        ------
+        TypeError
+            If dot correction lock is active.
+
         """
+        if self.dc_lock:
+            raise TypeError("dc attribute is locked")
+
         if channel is None:
             self.dc.fill(value)
         else:
@@ -915,9 +967,9 @@ class LPA(object):
         """
         with open(file_name, 'r') as myfile:
             file_contents=myfile.read()
-        self.dc = numpy.array([int(si) for si in file_contents.split()],
-                              dtype=int)
-        self.dc.resize(self.n_rows, self.n_cols, self.n_channels)
+        self._dc = numpy.array([int(si) for si in file_contents.split()],
+                               dtype=int)
+        self._dc.resize(self.n_rows, self.n_cols, self.n_channels)
 
     def load_gcal(self, file_name):
         """
@@ -1234,8 +1286,12 @@ class LPA(object):
         ------
         Exception
             If LED set information has not been loaded.
+        TypeError
+            If dot correction lock is active.
 
         """
+        if self.dc_lock:
+            raise TypeError("dc attribute is locked")
         # Check that LED set information has been loaded
         if self.led_sets is None:
             raise Exception("LED sets have not been loaded. "
