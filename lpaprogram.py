@@ -216,7 +216,7 @@ class LEDSet(object):
             raise ValueError("calibration data does not have the expected " + \
                 "dimensions")
 
-    def get_intensity(self, gs, dc, gcal=255, row=None, col=None):
+    def get_intensity(self, gs, dc=None, gcal=None, row=None, col=None):
         """
         Calculate intensity in µmol/(m^2*s) from grayscale values.
 
@@ -224,14 +224,19 @@ class LEDSet(object):
         All arrays should have the same dimensions. If either ``row`` or
         ``column`` are None, all wells are used.
 
+        Note that all calculations with a dot correction value different
+        from the one specified in the calibration file are approximate.
+
         Parameters
         ----------
         gs : array
             Grayscale values to convert.
-        dc : array
-            Dot-correction values.
+        dc : array, optional
+            Dot-correction values. If None (default), use same dc as in
+            calibration data.
         gcal : array, optional
-            Grayscale calibration values.
+            Grayscale calibration values. If None (default), use same gcal
+            as in calibration data.
         row : array, optional
             Row positions of each grayscale value to convert, zero-indexed.
         col : array, optional
@@ -264,17 +269,25 @@ class LEDSet(object):
         else:
             measured_intensity = led_data['Intensity (umol/m2/s)']\
                 .values.astype(float)
-        # Calculate intensity
-        dc = numpy.array(dc)
-        gcal = numpy.array(gcal)
+        # Convert grayscale input to array
         gs = numpy.array(gs)
+        # Convert dc and gcal to arrays, or use measured calibration values
+        if dc is not None:
+            dc = numpy.array(dc)
+        else:
+            dc = measured_dc
+        if gcal is not None:
+            gcal = numpy.array(gcal)
+        else:
+            gcal = measured_gcal
+        # Calculate intensity
         intensity = measured_intensity * (dc/measured_dc) * \
                                          (gcal/measured_gcal) * \
                                          (gs/4095.)
 
         return intensity
 
-    def get_grayscale(self, intensity, dc, gcal=255, row=None, col=None):
+    def get_grayscale(self, intensity, dc=None, gcal=None, row=None, col=None):
         """
         Calculate grayscale values to achieve the specified intensities.
 
@@ -287,14 +300,19 @@ class LEDSet(object):
         If the resulting grayscale value is higher than 4095 for any well,
         this function raises an error.
 
+        Note that all calculations with a dot correction value different
+        from the one specified in the calibration file are approximate.
+
         Parameters
         ----------
         intensity : array
             The intensities of each well in µmol/(m^2*s).
-        dc : array
-            Dot-correction values.
+        dc : array, optional
+            Dot-correction values. If None (default), use same dc as in
+            calibration data.
         gcal : array, optional
-            Grayscale calibration values.
+            Grayscale calibration values. If None (default), use same gcal
+            as in calibration data.
         row : array, optional
             Row positions of each intensity value to convert, zero-indexed.
         col : array, optional
@@ -327,10 +345,18 @@ class LEDSet(object):
         else:
             measured_intensity = led_data['Intensity (umol/m2/s)']\
                 .values.astype(float)
-        # Calculate grayscale value
-        dc = numpy.array(dc)
-        gcal = numpy.array(gcal)
+        # Convert intensity input to array
         intensity = numpy.array(intensity)
+        # Convert dc and gcal to arrays, or use measured calibration values
+        if dc is not None:
+            dc = numpy.array(dc)
+        else:
+            dc = measured_dc
+        if gcal is not None:
+            gcal = numpy.array(gcal)
+        else:
+            gcal = measured_gcal
+        # Calculate grayscale value
         gs = 4095. * (intensity/measured_intensity) * \
                      (measured_dc/dc) * \
                      (measured_gcal/gcal)
@@ -341,7 +367,12 @@ class LEDSet(object):
 
         return gs
 
-    def discretize_intensity(self, intensity, dc, gcal=255, row=None, col=None):
+    def discretize_intensity(self,
+                             intensity,
+                             dc=None,
+                             gcal=None,
+                             row=None,
+                             col=None):
         """
         Discretize intensity values.
 
@@ -356,10 +387,12 @@ class LEDSet(object):
         ----------
         intensity : array
             The intensities of each well in µmol/(m^2*s).
-        dc : array
-            Dot-correction values.
+        dc : array, optional
+            Dot-correction values. If None (default), use same dc as in
+            calibration data.
         gcal : array, optional
-            Grayscale calibration values.
+            Grayscale calibration values. If None (default), use same gcal
+            as in calibration data.
         row : array, optional
             Row positions of each intensity value to discretize,
             zero-indexed.
@@ -386,7 +419,7 @@ class LEDSet(object):
 
     def optimize_dc(self,
                     intensity,
-                    gcal=255,
+                    gcal=None,
                     min_dc=1,
                     uniform=False,
                     row=None,
@@ -404,12 +437,17 @@ class LEDSet(object):
         certain intensity, which also maximizes the resolution for lower
         intensities.
 
+        Note that using a dot correction value different from the one
+        in the calibration file will result in an intensity that will not
+        exactly match what is predicted here.
+
         Parameters
         ----------
         intensity : array
             The intensities of each well in µmol/(m^2*s).
         gcal : array, optional
-            Grayscale calibration values.
+            Grayscale calibration values. If None (default), use same gcal
+            as in calibration data.
         min_dc : array, optional
             Minimum dc value to return.
         uniform : bool, optional
@@ -445,11 +483,16 @@ class LEDSet(object):
         else:
             measured_intensity = led_data['Intensity (umol/m2/s)']\
                 .values.astype(float)
+        # Convert intensity input to array
+        intensity = numpy.array(intensity)
+        # Convert gcal to arrays, or use measured calibration values
+        if gcal is not None:
+            gcal = numpy.array(gcal)
+        else:
+            gcal = measured_gcal
         # Calculate dc value
         # We calculate the dot correction value required to achieve the desired
         # intensity with 4095 grayscale, and then round up.
-        gcal = numpy.array(gcal)
-        intensity = numpy.array(intensity)
         dc = measured_dc * (intensity/measured_intensity) * \
                            (measured_gcal/gcal)
         dc = numpy.ceil(dc).astype(numpy.uint16)
