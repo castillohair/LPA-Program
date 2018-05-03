@@ -556,11 +556,6 @@ class LPA(object):
         # Initialize led_sets list to None
         self.led_sets = None
 
-        # If either layout_names or led_set_names are different from None,
-        # initialize LED sets
-        if (layout_names is not None) or (led_set_names is not None):
-            self.load_led_sets(led_set_names, layout_names)
-
         # Initialize step size in ms
         self.step_size = 1000
         # Initialize dc and gcal arrays
@@ -575,6 +570,11 @@ class LPA(object):
                                       self.n_rows,
                                       self.n_cols,
                                       self.n_channels))
+
+        # If either layout_names or led_set_names are different from None,
+        # initialize LED sets
+        if (layout_names is not None) or (led_set_names is not None):
+            self.load_led_sets(led_set_names, layout_names)
 
     @property
     def grayscale(self):
@@ -691,6 +691,9 @@ class LPA(object):
         or `layout_names`. In this case, no LEDSet is loaded, and
         intensities are read, written, and discretized as zero.
 
+        Dot correction and grayscale calibration are loaded from the
+        calibration information in the LEDSet object.
+
         Parameters
         ----------
         led_set_names : list, optional
@@ -777,6 +780,25 @@ class LPA(object):
                 if self.n_cols != led_set.n_cols:
                     raise ValueError("number of columns does not match for LED "
                         "set {}".format(led_set.name))
+
+        # Load dot correction and grayscale calibration from LED sets
+        self.dc = numpy.zeros((self.n_rows,
+                               self.n_cols,
+                               self.n_channels), dtype=int)
+        self.gcal = numpy.ones((self.n_rows,
+                                 self.n_cols,
+                                 self.n_channels), dtype=int)*255
+        for led_channel, led_set in enumerate(self.led_sets):
+            if led_set is None:
+                continue
+            # Set dot correction from calibration data
+            dc_channel = led_set.calibration_data['DC'].values
+            dc_channel.resize((self.n_rows, self.n_cols))
+            self.dc[:,:,led_channel] = dc_channel
+            # Set grayscale calibration from calibration data
+            gcal_channel = led_set.calibration_data['GS Cal'].values
+            gcal_channel.resize((self.n_rows, self.n_cols))
+            self.gcal[:,:,led_channel] = gcal_channel
 
     def set_all_dc(self, value, channel=None):
         """

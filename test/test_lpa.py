@@ -22,6 +22,92 @@ class TestLPA(unittest.TestCase):
     """
     def setUp(self):
         lpaprogram.LED_CALIBRATION_PATH = "test/test_lpa_files/led-calibration"
+        # Default dot correction and grayscale calibration loaded from
+        # calibration data
+        self.default_dc_full = numpy.array([[[4, 7],
+                                             [4, 7],
+                                             [4, 7],
+                                             [4, 7],
+                                             [4, 7],
+                                             [4, 7]],
+
+                                            [[4, 7],
+                                             [4, 7],
+                                             [4, 7],
+                                             [4, 7],
+                                             [4, 7],
+                                             [4, 7]],
+
+                                            [[4, 7],
+                                             [4, 7],
+                                             [4, 7],
+                                             [4, 7],
+                                             [4, 7],
+                                             [4, 7]],
+
+                                            [[4, 7],
+                                             [4, 7],
+                                             [4, 7],
+                                             [4, 7],
+                                             [4, 7],
+                                             [4, 8]]])
+        self.default_dc_ch1 = numpy.array([[[4, 0],
+                                            [4, 0],
+                                            [4, 0],
+                                            [4, 0],
+                                            [4, 0],
+                                            [4, 0]],
+
+                                           [[4, 0],
+                                            [4, 0],
+                                            [4, 0],
+                                            [4, 0],
+                                            [4, 0],
+                                            [4, 0]],
+
+                                           [[4, 0],
+                                            [4, 0],
+                                            [4, 0],
+                                            [4, 0],
+                                            [4, 0],
+                                            [4, 0]],
+
+                                           [[4, 0],
+                                            [4, 0],
+                                            [4, 0],
+                                            [4, 0],
+                                            [4, 0],
+                                            [4, 0]]])
+        self.default_gcal_full = numpy.array([[[255, 182],
+                                               [255, 182],
+                                               [255, 192],
+                                               [255, 153],
+                                               [255, 178],
+                                               [255, 171]],
+
+                                              [[255, 197],
+                                               [255, 174],
+                                               [255, 189],
+                                               [255, 177],
+                                               [255, 196],
+                                               [255, 186]],
+
+                                              [[255, 175],
+                                               [255, 175],
+                                               [255, 187],
+                                               [255, 182],
+                                               [255, 183],
+                                               [255, 231]],
+
+                                              [[255, 182],
+                                               [255, 199],
+                                               [255, 215],
+                                               [255, 231],
+                                               [255, 177],
+                                               [255, 222]]])
+        self.default_gcal_ch1 = numpy.ones(48, dtype=int)*255
+        self.default_gcal_ch1.resize((4,6,2))
+
         # Grayscale and intensity values for testing of the grayscale property
         self.grayscale_gs_prop = numpy.array([[[[  46, 3027],
                                                 [2254, 3631],
@@ -975,6 +1061,26 @@ class TestLPA(unittest.TestCase):
         self.assertIsInstance(lpa.led_sets[0], lpaprogram.LEDSet)
         self.assertEqual(lpa.led_sets[0].name, 'EO_12')
         self.assertIsNone(lpa.led_sets[1])
+
+    def test_create_lpa_led_set_check_dc_and_gcal(self):
+        lpa = lpaprogram.LPA(name='Jennie', led_set_names=['EO_12', 'EO_20'])
+        numpy.testing.assert_array_equal(lpa.dc, self.default_dc_full)
+        numpy.testing.assert_array_equal(lpa.gcal, self.default_gcal_full)
+
+    def test_create_lpa_one_led_set_check_dc_and_gcal(self):
+        lpa = lpaprogram.LPA(name='Jennie', led_set_names=['EO_12', None])
+        numpy.testing.assert_array_equal(lpa.dc, self.default_dc_ch1)
+        numpy.testing.assert_array_equal(lpa.gcal, self.default_gcal_ch1)
+
+    def test_create_lpa_layout_check_dc_and_gcal(self):
+        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
+        numpy.testing.assert_array_equal(lpa.dc, self.default_dc_full)
+        numpy.testing.assert_array_equal(lpa.gcal, self.default_gcal_full)
+
+    def test_create_lpa_one_layout_check_dc_and_gcal(self):
+        lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', None])
+        numpy.testing.assert_array_equal(lpa.dc, self.default_dc_ch1)
+        numpy.testing.assert_array_equal(lpa.gcal, self.default_gcal_ch1)
 
     def test_set_all_dc_all(self):
         lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
