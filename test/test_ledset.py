@@ -187,6 +187,28 @@ class TestLEDSet(unittest.TestCase):
                          ]),
             decimal=12)
 
+    def test_get_intensity_6(self):
+        # Load
+        led_set = lpaprogram.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        # Get intensities
+        gs = numpy.array([2390, 3491, 1550, 1905])
+        row = [0, 0, 3, 2]
+        col = [4, 5, 0, 0]
+        intensity = led_set.get_intensity(
+            gs=gs,
+            row=row,
+            col=col)
+        # Test
+        self.assertEqual(len(intensity), 4)
+        numpy.testing.assert_almost_equal(
+            intensity,
+            numpy.array([15.996545384572205,
+                         22.840042202033434,
+                         10.310573014468773,
+                         12.760262467538615,
+                         ]),
+            decimal=12)
+
     def test_get_grayscale_1(self):
         # Load
         led_set = lpaprogram.LEDSet(name='TestLEDSet', file_name=self.file_name)
@@ -373,6 +395,30 @@ class TestLEDSet(unittest.TestCase):
                          3696,
                          3324,
                          1614,
+                ]))
+
+    def test_get_grayscale_7(self):
+        # Load
+        led_set = lpaprogram.LEDSet(name='TestLEDSet', file_name=self.file_name)
+        # Get grayscale values
+        intensity = numpy.array([7.92834328438,
+                                 21.961121594,
+                                 9.23805519165,
+                                 21.195842008,
+                                 ])
+        row = [0, 1, 3, 1]
+        col = [3, 5, 5, 2]
+        grayscale = led_set.get_grayscale(intensity=intensity,
+                                          row=row,
+                                          col=col)
+        # Test
+        self.assertEqual(len(grayscale), 4)
+        numpy.testing.assert_array_equal(
+            grayscale,
+            numpy.array([1161,
+                         3333,
+                         1466,
+                         3227,
                 ]))
 
     def test_get_grayscale_error(self):

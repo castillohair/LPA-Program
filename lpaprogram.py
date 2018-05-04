@@ -7,7 +7,7 @@ Generate programs for a Light Plate Apparatus (LPA).
 # Versions should comply with PEP440. For a discussion on single-sourcing
 # the version across setup.py and the project code, see
 # https://packaging.python.org/en/latest/single_source_version.html
-__version__ = '1.0.0b5'
+__version__ = '1.0.0'
 
 import os
 import random
@@ -216,7 +216,7 @@ class LEDSet(object):
             raise ValueError("calibration data does not have the expected " + \
                 "dimensions")
 
-    def get_intensity(self, gs, dc, gcal=255, row=None, col=None):
+    def get_intensity(self, gs, dc=None, gcal=None, row=None, col=None):
         """
         Calculate intensity in µmol/(m^2*s) from grayscale values.
 
@@ -224,14 +224,19 @@ class LEDSet(object):
         All arrays should have the same dimensions. If either ``row`` or
         ``column`` are None, all wells are used.
 
+        Note that all calculations with a dot correction value different
+        from the one specified in the calibration file are approximate.
+
         Parameters
         ----------
         gs : array
             Grayscale values to convert.
-        dc : array
-            Dot-correction values.
+        dc : array, optional
+            Dot-correction values. If None (default), use same dc as in
+            calibration data.
         gcal : array, optional
-            Grayscale calibration values.
+            Grayscale calibration values. If None (default), use same gcal
+            as in calibration data.
         row : array, optional
             Row positions of each grayscale value to convert, zero-indexed.
         col : array, optional
@@ -257,19 +262,32 @@ class LEDSet(object):
         # Get intensity at measured conditions
         measured_dc = led_data['DC'].values.astype(float)
         measured_gcal = led_data['GS Cal'].values.astype(float)
-        measured_intensity = led_data['Intensity (umol/m2/s)']\
-            .values.astype(float)
-        # Calculate intensity
-        dc = numpy.array(dc)
-        gcal = numpy.array(gcal)
+        # Intensity units can be expressed as µmol/(m^2*s) or umol/m2/s
+        if 'Intensity (µmol/(m^2*s))' in led_data.columns:
+            measured_intensity = led_data['Intensity (µmol/(m^2*s))']\
+                .values.astype(float)
+        else:
+            measured_intensity = led_data['Intensity (umol/m2/s)']\
+                .values.astype(float)
+        # Convert grayscale input to array
         gs = numpy.array(gs)
+        # Convert dc and gcal to arrays, or use measured calibration values
+        if dc is not None:
+            dc = numpy.array(dc)
+        else:
+            dc = measured_dc
+        if gcal is not None:
+            gcal = numpy.array(gcal)
+        else:
+            gcal = measured_gcal
+        # Calculate intensity
         intensity = measured_intensity * (dc/measured_dc) * \
                                          (gcal/measured_gcal) * \
                                          (gs/4095.)
 
         return intensity
 
-    def get_grayscale(self, intensity, dc, gcal=255, row=None, col=None):
+    def get_grayscale(self, intensity, dc=None, gcal=None, row=None, col=None):
         """
         Calculate grayscale values to achieve the specified intensities.
 
@@ -282,14 +300,19 @@ class LEDSet(object):
         If the resulting grayscale value is higher than 4095 for any well,
         this function raises an error.
 
+        Note that all calculations with a dot correction value different
+        from the one specified in the calibration file are approximate.
+
         Parameters
         ----------
         intensity : array
             The intensities of each well in µmol/(m^2*s).
-        dc : array
-            Dot-correction values.
+        dc : array, optional
+            Dot-correction values. If None (default), use same dc as in
+            calibration data.
         gcal : array, optional
-            Grayscale calibration values.
+            Grayscale calibration values. If None (default), use same gcal
+            as in calibration data.
         row : array, optional
             Row positions of each intensity value to convert, zero-indexed.
         col : array, optional
@@ -315,12 +338,25 @@ class LEDSet(object):
         # Get intensity at measured conditions
         measured_dc = led_data['DC'].values.astype(float)
         measured_gcal = led_data['GS Cal'].values.astype(float)
-        measured_intensity = led_data['Intensity (umol/m2/s)']\
-            .values.astype(float)
-        # Calculate grayscale value
-        dc = numpy.array(dc)
-        gcal = numpy.array(gcal)
+        # Intensity units can be expressed as µmol/(m^2*s) or umol/m2/s
+        if 'Intensity (µmol/(m^2*s))' in led_data.columns:
+            measured_intensity = led_data['Intensity (µmol/(m^2*s))']\
+                .values.astype(float)
+        else:
+            measured_intensity = led_data['Intensity (umol/m2/s)']\
+                .values.astype(float)
+        # Convert intensity input to array
         intensity = numpy.array(intensity)
+        # Convert dc and gcal to arrays, or use measured calibration values
+        if dc is not None:
+            dc = numpy.array(dc)
+        else:
+            dc = measured_dc
+        if gcal is not None:
+            gcal = numpy.array(gcal)
+        else:
+            gcal = measured_gcal
+        # Calculate grayscale value
         gs = 4095. * (intensity/measured_intensity) * \
                      (measured_dc/dc) * \
                      (measured_gcal/gcal)
@@ -331,7 +367,12 @@ class LEDSet(object):
 
         return gs
 
-    def discretize_intensity(self, intensity, dc, gcal=255, row=None, col=None):
+    def discretize_intensity(self,
+                             intensity,
+                             dc=None,
+                             gcal=None,
+                             row=None,
+                             col=None):
         """
         Discretize intensity values.
 
@@ -346,10 +387,12 @@ class LEDSet(object):
         ----------
         intensity : array
             The intensities of each well in µmol/(m^2*s).
-        dc : array
-            Dot-correction values.
+        dc : array, optional
+            Dot-correction values. If None (default), use same dc as in
+            calibration data.
         gcal : array, optional
-            Grayscale calibration values.
+            Grayscale calibration values. If None (default), use same gcal
+            as in calibration data.
         row : array, optional
             Row positions of each intensity value to discretize,
             zero-indexed.
@@ -376,7 +419,7 @@ class LEDSet(object):
 
     def optimize_dc(self,
                     intensity,
-                    gcal=255,
+                    gcal=None,
                     min_dc=1,
                     uniform=False,
                     row=None,
@@ -394,12 +437,17 @@ class LEDSet(object):
         certain intensity, which also maximizes the resolution for lower
         intensities.
 
+        Note that using a dot correction value different from the one
+        in the calibration file will result in an intensity that will not
+        exactly match what is predicted here.
+
         Parameters
         ----------
         intensity : array
             The intensities of each well in µmol/(m^2*s).
         gcal : array, optional
-            Grayscale calibration values.
+            Grayscale calibration values. If None (default), use same gcal
+            as in calibration data.
         min_dc : array, optional
             Minimum dc value to return.
         uniform : bool, optional
@@ -428,13 +476,23 @@ class LEDSet(object):
         # Get intensity at measured conditions
         measured_dc = led_data['DC'].values.astype(float)
         measured_gcal = led_data['GS Cal'].values.astype(float)
-        measured_intensity = led_data['Intensity (umol/m2/s)']\
-            .values.astype(float)
+        # Intensity units can be expressed as µmol/(m^2*s) or umol/m2/s
+        if 'Intensity (µmol/(m^2*s))' in led_data.columns:
+            measured_intensity = led_data['Intensity (µmol/(m^2*s))']\
+                .values.astype(float)
+        else:
+            measured_intensity = led_data['Intensity (umol/m2/s)']\
+                .values.astype(float)
+        # Convert intensity input to array
+        intensity = numpy.array(intensity)
+        # Convert gcal to arrays, or use measured calibration values
+        if gcal is not None:
+            gcal = numpy.array(gcal)
+        else:
+            gcal = measured_gcal
         # Calculate dc value
         # We calculate the dot correction value required to achieve the desired
         # intensity with 4095 grayscale, and then round up.
-        gcal = numpy.array(gcal)
-        intensity = numpy.array(intensity)
         dc = measured_dc * (intensity/measured_intensity) * \
                            (measured_gcal/gcal)
         dc = numpy.ceil(dc).astype(numpy.uint16)
@@ -480,6 +538,13 @@ class LPA(object):
     file named ``LED_LAYOUT_FILENAME`` contained in
     ``LED_CALIBRATION_PATH``.
 
+    Note that intensity calculations with dot correction values different
+    from the ones specified in the calibration data files are only
+    approximate, and therefore it is recommended to maintain the original
+    dot correction values. A `dc_lock` attribute, activated by default,
+    prevents direct modification of the dot correction initially loaded
+    from calibration files.
+
     Properties
     ----------
     name : str or None, optional
@@ -491,6 +556,8 @@ class LPA(object):
         Number of cols in the LPA.
     n_channels : int, optional
         Number of channels (LEDs per well) in the LPA.
+    dc_lock : bool, optional
+        Whether to allow direct modification of dot correction values.
     led_set_names : list, optional
         LED set names for each channel.
     layout_names : list, optional
@@ -509,11 +576,18 @@ class LPA(object):
         Number of cols in the LPA.
     n_channels : int
         Number of channels (LEDs per well) in the LPA.
+    dc_lock : bool, optional
+        Whether to allow direct modification of dot correction values. If
+        True, the `dc` attribute cannot be directly modified, and functions
+        ``set_all_dc()`` and ``optimize_dc()`` will raise a ``TypeError``
+        if called. Dot correction can then only be modified by loading
+        LED sets (calling ``load_led_sets()``) or loading a dot correction
+        file (calling ``load_dc()`` or ``load_files()``).
     step_size : int
         Duration of each time step in `intensity` array, in milliseconds.
     dc : array
         Array of size (n_rows, n_cols, n_channels) with dot correction
-        values.
+        values. Cannot be directly modified if `dc_lock` is True.
     gcal : array
         Array of size (n_rows, n_cols, n_channels) with grayscale
         calibration values.
@@ -527,6 +601,7 @@ class LPA(object):
                  n_rows=4,
                  n_cols=6,
                  n_channels=2,
+                 dc_lock=True,
                  led_set_names=None,
                  layout_names=None):
 
@@ -538,20 +613,18 @@ class LPA(object):
         self.n_cols = n_cols
         self.n_channels = n_channels
 
+        # Lock on dot correction values
+        self.dc_lock = dc_lock
+
         # Initialize led_sets list to None
         self.led_sets = None
-
-        # If either layout_names or led_set_names are different from None,
-        # initialize LED sets
-        if (layout_names is not None) or (led_set_names is not None):
-            self.load_led_sets(led_set_names, layout_names)
 
         # Initialize step size in ms
         self.step_size = 1000
         # Initialize dc and gcal arrays
-        self.dc = numpy.zeros((self.n_rows,
-                               self.n_cols,
-                               self.n_channels), dtype=int)
+        self._dc = numpy.zeros((self.n_rows,
+                                self.n_cols,
+                                self.n_channels), dtype=int)
         self.gcal = numpy.ones((self.n_rows,
                                  self.n_cols,
                                  self.n_channels), dtype=int)*255
@@ -560,6 +633,138 @@ class LPA(object):
                                       self.n_rows,
                                       self.n_cols,
                                       self.n_channels))
+
+        # If either layout_names or led_set_names are different from None,
+        # initialize LED sets
+        if (layout_names is not None) or (led_set_names is not None):
+            self.load_led_sets(led_set_names, layout_names)
+
+    @property
+    def dc(self):
+        """
+        Dot correction values.
+
+        This attribute can only be directly set if `dc_lock` is set to
+        False.
+
+        """
+        # If dc lock is active, return a copy. This will guarantee that
+        # statements like ``lpa.dc[:,:,0] = dc_new`` do not modify ``lpa.dc``.
+        # Otherwise, return ``_dc`` to allow for this type of modification.
+        if self.dc_lock:
+            return self._dc.copy()
+        else:
+            return self._dc
+
+    @dc.setter
+    def dc(self, dc_new):
+        if self.dc_lock:
+            raise TypeError("dc attribute is locked")
+        else:
+            self._dc = dc_new
+
+    @property
+    def grayscale(self):
+        """
+        Grayscale values corresponding to `intensity`.
+
+        Grayscale values are calculated from the intensity array using the
+        associated LEDSet objects, and the dc and gcal arrays. Setting this
+        property populates the intensity array using dc and gcal values.
+        `grayscale` is a , (n_steps, n_rows, n_cols, n_channels)-sized
+        array.
+
+        Raises
+        ------
+        Exception
+            If LED set information has not been loaded.
+
+        """
+        # Check that LED set information has been loaded
+        if self.led_sets is None:
+            raise Exception("LED sets have not been loaded. "
+                "Call load_led_sets().")
+        # Throw warning if one of the led sets is not present
+        for channel, led_set in enumerate(self.led_sets):
+            if led_set is None:
+                warnings.warn("No LEDSet loaded for channel "
+                    "{}. Will write all grayscale values as zero.".format(
+                        channel))
+
+        n_steps = self.intensity.shape[0]
+        # Initialize grayscale array
+        gs = numpy.zeros((n_steps,
+                          self.n_rows,
+                          self.n_cols,
+                          self.n_channels), dtype=int)
+        # Convert intensities to grayscale values
+        for step in range(n_steps):
+            for channel in range(self.n_channels):
+                if self.led_sets[channel] is not None:
+                    try:
+                        gs[step, :, :, channel] = numpy.resize(
+                            self.led_sets[channel].\
+                                get_grayscale(
+                                    row=None,
+                                    col=None,
+                                    intensity=self.intensity[step,:,:,channel].\
+                                        flatten(),
+                                    dc=self.dc[:,:,channel].flatten(),
+                                    gcal=self.gcal[:,:,channel].flatten(),
+                                    ),
+                            (self.n_rows, self.n_cols))
+                    except ValueError as e:
+                        e.args = ("on LPA {}, step {}, channel {}: ".format(
+                            self.name,
+                            step,
+                            channel) + e.args[0],)
+                        raise
+
+        return gs
+
+    @grayscale.setter
+    def grayscale(self, gs):
+        # Check that LED set information has been loaded
+        if self.led_sets is None:
+            raise Exception("LED sets have not been loaded. "
+                "Call load_led_sets().")
+        # Throw warning if one of the led sets is not present
+        for channel, led_set in enumerate(self.led_sets):
+            if led_set is None:
+                warnings.warn("No LEDSet loaded for channel "
+                    "{}. Will read all intensities as zero.".format(channel))
+
+        # Check correct format of new grayscale values
+        if not isinstance(gs, numpy.ndarray):
+            raise ValueError("grayscale should be array")
+        if len(gs.shape)!=4:
+            raise ValueError("grayscale should be a 4D array")
+        if (gs.shape[1]!=self.n_rows) or \
+                (gs.shape[2]!=self.n_cols) or \
+                (gs.shape[3]!=self.n_channels):
+            raise ValueError("grayscale dimensions are not appropriate")
+        # Transform to unsigned integer
+        gs = gs.astype('uint16')
+        # Check that all values are lower than 4095
+        if numpy.any(gs>4095):
+            raise ValueError("grayscale values should not be greater than 4095")
+
+        # Populate intensity array
+        self.set_n_steps(gs.shape[0])
+        for step in range(gs.shape[0]):
+            for channel in range(self.n_channels):
+                if self.led_sets[channel] is None:
+                    # Set intensity as zero
+                    intensity_sch = numpy.zeros(self.n_rows*self.n_cols)
+                else:
+                    # Get intensities from LED set
+                    intensity_sch = self.led_sets[channel].get_intensity(
+                        gs=gs[step,:,:,channel].flatten(),
+                        dc=self.dc[:,:,channel].flatten(),
+                        gcal=self.gcal[:,:,channel].flatten())
+                # Resize and add to intensity array
+                intensity_sch.resize(self.n_rows, self.n_cols)
+                self.intensity[step, :, :, channel] = intensity_sch
 
     def load_led_sets(self, led_set_names=None, layout_names=None):
         """
@@ -572,6 +777,9 @@ class LPA(object):
         ``None`` can be specified as an element of either `led_set_names`
         or `layout_names`. In this case, no LEDSet is loaded, and
         intensities are read, written, and discretized as zero.
+
+        Dot correction and grayscale calibration are loaded from the
+        calibration information in the LEDSet object.
 
         Parameters
         ----------
@@ -617,7 +825,7 @@ class LPA(object):
                     led_set_names.append(None)
                     continue
                 # Get data for corresponding row in layout table
-                channel = ['Top', 'Bot'][i]
+                channel = i + 1
                 layout_row = layout_table[(layout_table['LPA']==self.name) &\
                                           (layout_table['Channel']==channel) &\
                                           (layout_table['Layout']==layout)]
@@ -631,7 +839,7 @@ class LPA(object):
                         " Channel {}, Layout {} in {}".format(
                             self.name, channel, layout, LED_LAYOUT_FILENAME))
                 # Accumulate
-                led_set_names.append(layout_row.iloc[0]['Archive ID'])
+                led_set_names.append(layout_row.iloc[0]['LED Set'])
 
         # Initialize led sets
         self.led_sets = []
@@ -660,6 +868,25 @@ class LPA(object):
                     raise ValueError("number of columns does not match for LED "
                         "set {}".format(led_set.name))
 
+        # Load dot correction and grayscale calibration from LED sets
+        self._dc = numpy.zeros((self.n_rows,
+                                self.n_cols,
+                                self.n_channels), dtype=int)
+        self.gcal = numpy.ones((self.n_rows,
+                                 self.n_cols,
+                                 self.n_channels), dtype=int)*255
+        for led_channel, led_set in enumerate(self.led_sets):
+            if led_set is None:
+                continue
+            # Set dot correction from calibration data
+            dc_channel = led_set.calibration_data['DC'].values
+            dc_channel.resize((self.n_rows, self.n_cols))
+            self._dc[:,:,led_channel] = dc_channel
+            # Set grayscale calibration from calibration data
+            gcal_channel = led_set.calibration_data['GS Cal'].values
+            gcal_channel.resize((self.n_rows, self.n_cols))
+            self.gcal[:,:,led_channel] = gcal_channel
+
     def set_all_dc(self, value, channel=None):
         """
         Set all dc values for a specific channel or for all of them.
@@ -672,7 +899,15 @@ class LPA(object):
             Channel for which the specified dot correction value should be
             assigned. If None, assign to all channels.
 
+        Raises
+        ------
+        TypeError
+            If dot correction lock is active.
+
         """
+        if self.dc_lock:
+            raise TypeError("dc attribute is locked")
+
         if channel is None:
             self.dc.fill(value)
         else:
@@ -687,8 +922,8 @@ class LPA(object):
         value : int
             Desired grayscale calibration value, from 0 to 255.
         channel : int, optional
-            Channel for which the specified dot correction value should be
-            assigned. If None, assign to all channels.
+            Channel for which the specified grayscale calibration value
+            should be assigned. If None, assign to all channels.
 
         """
         if channel is None:
@@ -732,9 +967,9 @@ class LPA(object):
         """
         with open(file_name, 'r') as myfile:
             file_contents=myfile.read()
-        self.dc = numpy.array([int(si) for si in file_contents.split()],
-                              dtype=int)
-        self.dc.resize(self.n_rows, self.n_cols, self.n_channels)
+        self._dc = numpy.array([int(si) for si in file_contents.split()],
+                               dtype=int)
+        self._dc.resize(self.n_rows, self.n_cols, self.n_channels)
 
     def load_gcal(self, file_name):
         """
@@ -765,47 +1000,19 @@ class LPA(object):
         file_name : str
             Name of the file to load.
 
-        Raises
-        ------
-        Exception
-            If LED set information has not been loaded.
-
         """
-        # Check that LED set information has been loaded
-        if self.led_sets is None:
-            raise Exception("LED sets have not been loaded. "
-                "Call load_led_sets().")
-        # Throw warning if one of the led sets is not present
-        for channel, led_set in enumerate(self.led_sets):
-            if led_set is None:
-                warnings.warn("No LEDSet loaded for channel "
-                    "{}. Will read all intensities as zero.".format(channel))
         # Load light program file
         lpf = LPF(file_name)
         # Check dimensions
         if lpf.n_channels != self.n_rows*self.n_cols*self.n_channels:
             raise ValueError("unexpected number of channels in light program "
                 "file")
-        # Populate intensity array
-        self.set_n_steps(lpf.n_steps)
-        gs = numpy.resize(lpf.grayscale, (lpf.n_steps,
-                                          self.n_rows,
-                                          self.n_cols,
-                                          self.n_channels))
-        for step in range(lpf.n_steps):
-            for channel in range(self.n_channels):
-                if self.led_sets[channel] is None:
-                    # Set intensity as zero
-                    intensity_sch = numpy.zeros(self.n_rows*self.n_cols)
-                else:
-                    # Get intensities from LED set
-                    intensity_sch = self.led_sets[channel].get_intensity(
-                        gs=gs[step,:,:,channel].flatten(),
-                        dc=self.dc[:,:,channel].flatten(),
-                        gcal=self.gcal[:,:,channel].flatten())
-                # Resize and add to intensity array
-                intensity_sch.resize(self.n_rows, self.n_cols)
-                self.intensity[step, :, :, channel] = intensity_sch
+        # Populate grayscale array
+        # This automatically updates the intensity array.
+        self.grayscale = numpy.resize(lpf.grayscale, (lpf.n_steps,
+                                                      self.n_rows,
+                                                      self.n_cols,
+                                                      self.n_channels))
         # Set step size
         self.step_size = lpf.step_size
 
@@ -886,48 +1093,11 @@ class LPA(object):
         file_name : str
             Name of the file to save.
 
-        Raises
-        ------
-        Exception
-            If LED set information has not been loaded.
-
         """
-        # Check that LED set information has been loaded
-        if self.led_sets is None:
-            raise Exception("LED sets have not been loaded. "
-                "Call load_led_sets().")
-        # Throw warning if one of the led sets is not present
-        for channel, led_set in enumerate(self.led_sets):
-            if led_set is None:
-                warnings.warn("No LEDSet loaded for channel "
-                    "{}. Will write all grayscale values as zero.".format(
-                        channel))
-
-        n_steps = self.intensity.shape[0]
-        # Initialize grayscale array
-        gs = numpy.zeros((n_steps,
-                          self.n_rows*self.n_cols,
-                          self.n_channels), dtype=int)
-        # Convert intensities to grayscale values
-        for step in range(n_steps):
-            for channel in range(self.n_channels):
-                if self.led_sets[channel] is not None:
-                    try:
-                        gs[step, :, channel] = self.led_sets[channel].\
-                            get_grayscale(
-                                row=None,
-                                col=None,
-                                intensity=self.intensity[step, :, :, channel].\
-                                    flatten(),
-                                dc=self.dc[:,:,channel].flatten(),
-                                gcal=self.gcal[:,:,channel].flatten(),
-                                )
-                    except ValueError as e:
-                        e.args = ("on step {}, channel {}: ".format(
-                            step,
-                            channel) + e.args[0],)
-                        raise
+        # Get grayscale values from grayscale property
+        gs = self.grayscale
         # Flatten dimension corresponding to channels
+        n_steps = self.intensity.shape[0]
         gs.resize(n_steps, self.n_rows*self.n_cols*self.n_channels)
         # Create LPF object and save
         lpf = LPF()
@@ -1116,8 +1286,12 @@ class LPA(object):
         ------
         Exception
             If LED set information has not been loaded.
+        TypeError
+            If dot correction lock is active.
 
         """
+        if self.dc_lock:
+            raise TypeError("dc attribute is locked")
         # Check that LED set information has been loaded
         if self.led_sets is None:
             raise Exception("LED sets have not been loaded. "

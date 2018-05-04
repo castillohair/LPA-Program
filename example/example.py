@@ -1,11 +1,11 @@
 import numpy
 import lpaprogram
 
-lpaprogram.LED_CALIBRATION_PATH = "../test/test_lpa_files/led-calibration"
+lpaprogram.LED_CALIBRATION_PATH = "Calibration Data"
 
 if __name__ == "__main__":
-    # Load LPAs
-    lpa = lpaprogram.LPA(name='Jennie', led_set_names=['EO_12', 'EO_20'])
+    # Load LPA
+    lpa = lpaprogram.LPA(name='Jennie', layout_names=['520-2-KB', '660-LS'])
     # Step size is one minute
     lpa.step_size = 60000
     # Exp time is 8 hours
@@ -16,9 +16,9 @@ if __name__ == "__main__":
     lpa.set_all_gcal(255, channel=1)
 
     # Define Light intensity signal
-    # Green light: ramp to 100
-    # Red light: constant at 20
-    gls = numpy.logspace(-1, 2, 360)
+    # Channel 1: ramp to 50
+    # Channel 2: constant at 20
+    gls = numpy.logspace(-1, numpy.log10(50), 360)
     gls_pre = 0
     rls = 20
     sampling_steps = numpy.arange(24)*15
@@ -28,9 +28,8 @@ if __name__ == "__main__":
                                  sampling_steps=sampling_steps,
                                  channel=0)
     lpa.intensity[:,:,:,1]=rls
-    # Adjust dc values
-    lpa.optimize_dc(channel=0, uniform=True)
-    lpa.optimize_dc(channel=1, uniform=True)
+
+    # Discretize intensity
     lpa.discretize_intensity()
 
     # Save files
